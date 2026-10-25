@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "schema_version": 1,
   "kit": {
     "id": "noah-kit",
@@ -7,9 +6,9 @@
     "core_version_range": ">=0.1.0 <0.2.0"
   },
   "project": {
-    "id": "replace-with-stable-project-id",
-    "name": "replace-with-project-name",
-    "type": "application"
+    "id": "noah-kit",
+    "name": "Noah Kit",
+    "type": "kit-development"
   },
   "installation": {
     "prompt_on_missing_core": true,
@@ -19,7 +18,7 @@
     "check_on_startup": true,
     "auto_install": false,
     "check_after_local_time": "17:00",
-    "timezone": "Asia/Ho_Chi_Minh",
+    "timezone": "local",
     "remind_after_days": 1,
     "channel": "stable"
   },
