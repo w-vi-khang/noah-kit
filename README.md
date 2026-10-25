@@ -52,12 +52,12 @@ This stores the decision and reminder interval in local state. Automatic startup
 
 The default local data directory is `~/.noah-kit/` (with the home-directory equivalent on Windows). It stores versioned Core files and `state.json`; it is not part of the project repository. Set `NOAH_HOME` only when you intentionally want to use a different local data directory. The installer copies a fixed set of files and does not run package lifecycle scripts or project migrations.
 
-**Current limitation:** this first milestone provides the initializer, not the persistent Core installer or update engine. It does not yet install Core skills, manage local state, check releases, or run migrations. Those features will be added only with explicit safety and recovery behavior.
+**Current limitations:** the CLI currently supports project initialization, local Core installation, status inspection, and recording a declined-install choice. It does not yet perform automatic startup onboarding, evaluate reminder deadlines, check for new releases, update an installed Core, verify signed release artifacts, run migrations, or install skills and agent workflows. These capabilities remain disabled until their safety and recovery behavior is implemented.
 
 ## Initial implementation scope
 
-The first milestone establishes the architecture, manifest contract, initialization behavior, and safety boundaries before adding automated updates, migrations, or multi-agent orchestration.
+The current foundation includes the architecture contract, cross-platform initializer, versioned local Core installation, schema-validated local state, project/Core compatibility checks, and explicit recording of declined installation choices. Automated onboarding, release updates, migrations, and multi-agent orchestration remain future milestones.
 
 ## Status
 
-This repository is being initialized. The architecture and implementation plan are intentionally staged so that the first working path can be tested end-to-end before more features are added.
+The repository is in active early development. See `docs/implementation-plan.md` for implemented milestones, outstanding work, and acceptance criteria.
