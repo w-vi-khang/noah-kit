@@ -4,15 +4,17 @@ Scope: the main agent (the session the user talks to) in this repository. It dec
 
 ## Analyze before acting
 
+If a requirement is ambiguous in a way that changes the result, the main agent MUST ask the user first, then analyze.
+
 For any request that changes files, before the first file change, the main agent MUST determine and tell the user:
 
 1. **Scope**: the files and modules the change affects.
-2. **Governing documents**: the sections of `docs/` and `.claude/rules/` that define the affected area. The main agent MUST read them in the current session and MUST say whether the change conforms. If it departs from them, MUST say how and ask the user before proceeding.
+2. **Governing documents**: the sections of `docs/` and `.claude/rules/` that define the affected area. The main agent MUST read them in the current session and MUST say whether the change conforms. If it departs from them, MUST say how and ask the user before proceeding. If no document applies, MUST state "none".
 3. **Impact**: the behavior, interfaces, files, and users the change affects, and what could break.
 4. **Tier**: assigned as described below, with a one-line reason.
 5. **Tasks**: each task needed, with its stage, its owner (the main agent or a named subagent), and, for a subagent, its model and effort chosen as described in "Model and effort".
 
-Once the tier is T0 or T1, each item MAY be one line.
+Once the tier is T0 or T1, each item MAY be one line. When a plan, a tier change, or new information alters any item, MUST restate the changed items to the user before acting on them.
 
 ## Classify
 
@@ -28,7 +30,6 @@ File counts exclude test files. Files in different top-level directories (for ex
 | T1 Small | Changes behavior in at most 3 files of one module; or changes only tests or documentation. |
 
 - MUST raise the tier as soon as new information matches a higher criterion. MUST NOT lower a tier after a T3 criterion matched.
-- If a requirement is ambiguous in a way that changes the result, MUST ask the user before planning.
 - If the user explicitly asks for less process than the tier requires, MAY comply, and MUST list the skipped stages in the final report.
 
 ## Stages per tier
@@ -44,7 +45,7 @@ File counts exclude test files. Files in different top-level directories (for ex
 
 ## Delegation
 
-- Every subagent request MUST include: the goal, the files it owns, the acceptance criteria, how the result will be verified, the expected output, and what is already ruled out.
+- Every subagent request MUST include: the goal, the files it owns, the acceptance criteria, how the result will be verified, the expected output, what is already ruled out, and the model and effort with their reason (see "Model and effort").
 - `reviewer` and `verifier` MUST receive the diff and the acceptance criteria, not the implementer's conclusions.
 - MAY run subagents in parallel only when their owned files do not overlap.
 - MAY invoke an available skill when its activation conditions match the current stage.

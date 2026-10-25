@@ -24,7 +24,7 @@ The adapter should be thin and generated or maintained by Noah Kit. It exposes t
 
 The adapter must not assume symbolic links behave identically on Windows, macOS, and Linux. Prefer explicit generated files or a tested platform-specific linking strategy.
 
-Proposed direction (prototype, see `docs/agent-workflow.md`): reusable Claude Code components (subagents, later skills and hooks, and the `noah` executable) ship in the Core plugin; the adapter keeps what a plugin cannot provide, namely always-loaded rules and default Claude Code settings.
+Proposed direction (prototype; sources and limits in `docs/agent-workflow.md`): reusable Claude Code components (subagents, later skills, and the `noah` executable) ship in the Core plugin; the adapter keeps what a plugin cannot provide according to the Claude Code documentation, namely always-loaded rules and default Claude Code settings. Whether hooks live in the plugin or in the adapter is undecided.
 
 ## Initialization and onboarding
 

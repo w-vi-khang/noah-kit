@@ -37,7 +37,7 @@ Source: Claude Code settings documentation (`model` and `effortLevel` keys, per-
 
 The original vision defines ten steps: understand, clarify, plan, select skills and agents, implement, test, review, address findings, verify, report. Tiers decide which of these run as separate stages:
 
-- **All tiers** run understand, clarify (only when ambiguity changes the result), and report.
+- **All tiers** run understand, clarify (only when ambiguity changes the result), and report. Before changing files, every tier states the analysis the rule requires (scope, governing documents, impact, tier, tasks); for T0 and T1 each item may be one line, which keeps small tasks cheap without skipping the check against governing documents.
 - **T0** stops after re-reading the diff.
 - **T1** adds tests run by the MA. The original vision lists test output as independent evidence, so executed tests verify a T1 change without a separate reviewer. The MA's own description of the result does not count.
 - **T2** adds a separate test author and an independent reviewer.
@@ -81,7 +81,7 @@ This repository is also a plugin marketplace:
 - `bin/noah` runs the command-line entry point `src/main.js`, which imports `run()` from `src/cli.js`. `src/cli.js` has no side effects on import, so the CLI does not depend on how its path was reached (symlinks, npm bin links, or the plugin cache). See `CONTRIBUTING.md` for running a checkout. Claude Code puts a plugin's `bin/` on the Bash tool's `PATH` after the user's own entries, so a `noah` already on the user's `PATH` (such as the launcher from `noah link`, if the user added it to `PATH`) takes precedence and may run a different Core version. `noah --version` shows which version runs. `bin/noah` is a POSIX shell script; there is no Windows `.cmd` equivalent, so Claude's PowerShell tool cannot run it.
 - The plugin root contains `package.json` without a lockfile, so Claude Code installs no dependencies when it caches the plugin. Adding a lockfile would make Claude Code run a dependency install at cache time.
 
-The shipped agents are written for this repository: their descriptions refer to the T0-T3 tiers in `.claude/rules/main-agent.md`, and `reviewer` checks Noah Kit's own safety rules. The plugin does not ship that rule, so in another project the agents lack that context until `init` generates it as part of the Claude Code adapter.
+The shipped agents are written for this repository: their descriptions refer to the T0-T3 tiers in `.claude/rules/main-agent.md`, and `reviewer` checks Noah Kit's own safety rules. The plugin does not ship that rule, so in another project the agents lack that context. Generating it with `init` as part of the Claude Code adapter is proposed, not implemented.
 
 `claude plugin validate .` passes with one warning: `CLAUDE.md` at the plugin root is not loaded as plugin context. That file is this repository's own development instructions, so the warning is expected, and `--strict` fails because of it.
 

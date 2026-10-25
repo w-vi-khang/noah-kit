@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -49,6 +50,7 @@ test('no agent fixes a model or effort, so the main agent chooses them per reque
   const guide = mainAgentRule.split('## Model and effort')[1]?.split('\n## ')[0] ?? '';
   assert.match(guide, /MUST decide both and MUST state them/);
   assert.match(guide, /MUST pass `model` to the Agent tool/);
+  assert.match(guide, /MUST pass `effort` when the Agent tool accepts it/);
   for (const model of ['haiku', 'sonnet', 'opus']) {
     assert.match(guide, new RegExp(`\`${model}\``), `model guide must cover ${model}`);
   }
@@ -60,6 +62,9 @@ test('the main agent analyzes scope, governing documents, impact, tier, and task
     assert.ok(analysis.includes(item), `analysis must require ${item}`);
   }
   assert.match(analysis, /MUST read them in the current session/);
+  assert.match(analysis, /before the first file change/);
+  assert.match(analysis, /ask the user before proceeding/);
+  assert.match(analysis, /MUST restate the changed items/);
   assert.match(analysis, /its model and effort/);
 });
 
@@ -104,4 +109,11 @@ test('the project defaults the main agent to Opus 5.5 at high effort', () => {
   const settings = JSON.parse(readFileSync(path.join(repositoryRoot, '.claude', 'settings.json'), 'utf8'));
   assert.equal(settings.model, 'claude-opus-5-5');
   assert.equal(settings.effortLevel, 'high');
+});
+
+test('retired terms do not return to tracked files', () => {
+  // "Claude Code adapter" is the documented name for the layer init
+  // generates (docs/architecture.md); these terms duplicated or clashed with it.
+  const result = spawnSync('git', ['grep', '-n', '-i', '-E', 'project layer|entry adapter', '--', '.', ':!test/agents.test.js'], { cwd: repositoryRoot, encoding: 'utf8' });
+  assert.equal(result.status, 1, `retired terms found:\n${result.stdout}`);
 });
