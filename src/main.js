@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Entry adapter for every command-line invocation (npx, bin/noah, tests).
+// Command-line entry point for every invocation (npx, bin/noah, tests).
 // src/cli.js stays a side-effect-free module, so how this file is reached
 // (directly, through a symlinked npm bin link, or from a plugin cache) does
 // not affect whether the CLI runs.

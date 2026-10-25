@@ -2,9 +2,19 @@
 
 Scope: the main agent (the session the user talks to) in this repository. It decides how much process each request gets and delegates to the subagents in `.claude/agents/`. Design rationale: `docs/agent-workflow.md`.
 
-## Classify before acting
+## Analyze before acting
 
-For any request that changes files, the main agent MUST assign a tier before the first file change and MUST tell the user the tier and a one-line reason.
+For any request that changes files, before the first file change, the main agent MUST determine and tell the user:
+
+1. **Scope**: the files and modules the change affects.
+2. **Governing documents**: the sections of `docs/` and `.claude/rules/` that define the affected area. The main agent MUST read them in the current session and MUST say whether the change conforms. If it departs from them, MUST say how and ask the user before proceeding.
+3. **Impact**: the behavior, interfaces, files, and users the change affects, and what could break.
+4. **Tier**: assigned as described below, with a one-line reason.
+5. **Tasks**: each task needed, with its stage, its owner (the main agent or a named subagent), and, for a subagent, its model and effort chosen as described in "Model and effort".
+
+Once the tier is T0 or T1, each item MAY be one line.
+
+## Classify
 
 1. If the change touches at most 2 files and changes neither behavior nor meaning (typos, formatting, code comments), the tier is T0, whatever the paths.
 2. Otherwise, the tier is the highest one whose criterion matches. If none matches, the tier is T1.
@@ -42,7 +52,7 @@ File counts exclude test files. Files in different top-level directories (for ex
 
 ## Model and effort
 
-Subagent definitions do not fix a model or effort. For every subagent request, the main agent MUST set `model` explicitly, MUST set `effort` explicitly when the Agent tool accepts it, and MUST state both choices and a one-line reason in the request. Use the first row that matches the request's tier and stage.
+Subagent definitions do not fix a model or effort. For every subagent request, the main agent MUST decide both and MUST state them, with a one-line reason, in the task list and in the request. It MUST pass `model` to the Agent tool, and MUST pass `effort` when the Agent tool accepts it. Use the first row that matches the request's tier and stage.
 
 | Request | Model | Effort |
 | --- | --- | --- |

@@ -47,10 +47,20 @@ test('no agent fixes a model or effort, so the main agent chooses them per reque
     assert.equal('effort' in agent.fields, false, `${agent.fileName} must not set effort`);
   }
   const guide = mainAgentRule.split('## Model and effort')[1]?.split('\n## ')[0] ?? '';
-  assert.match(guide, /MUST set `model` explicitly, MUST set `effort` explicitly when the Agent tool accepts it/);
+  assert.match(guide, /MUST decide both and MUST state them/);
+  assert.match(guide, /MUST pass `model` to the Agent tool/);
   for (const model of ['haiku', 'sonnet', 'opus']) {
     assert.match(guide, new RegExp(`\`${model}\``), `model guide must cover ${model}`);
   }
+});
+
+test('the main agent analyzes scope, governing documents, impact, tier, and tasks before changing files', () => {
+  const analysis = mainAgentRule.split('## Analyze before acting')[1]?.split('\n## ')[0] ?? '';
+  for (const item of ['**Scope**', '**Governing documents**', '**Impact**', '**Tier**', '**Tasks**']) {
+    assert.ok(analysis.includes(item), `analysis must require ${item}`);
+  }
+  assert.match(analysis, /MUST read them in the current session/);
+  assert.match(analysis, /its model and effort/);
 });
 
 test('the main agent must not push without a request in the current turn', () => {
