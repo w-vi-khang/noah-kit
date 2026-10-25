@@ -346,7 +346,11 @@ test('creates managed cross-platform launchers and dispatches to installed Core'
     const unixLauncherPath = path.join(binDirectory, 'noah');
     const windowsLauncherPath = path.join(binDirectory, 'noah.cmd');
     assert.match(await readFile(dispatcherPath, 'utf8'), /NOAH_KIT_MANAGED_LAUNCHER/);
-    assert.match(await readFile(unixLauncherPath, 'utf8'), /NOAH_KIT_MANAGED_LAUNCHER/);
+    if (process.platform === 'win32') {
+      await assert.rejects(readFile(unixLauncherPath, 'utf8'), { code: 'ENOENT' });
+    } else {
+      assert.match(await readFile(unixLauncherPath, 'utf8'), /NOAH_KIT_MANAGED_LAUNCHER/);
+    }
     assert.match(await readFile(windowsLauncherPath, 'utf8'), /NOAH_KIT_MANAGED_LAUNCHER/);
 
     const dispatched = spawnSync(process.execPath, [dispatcherPath, '--version'], {
