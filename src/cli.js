@@ -7,8 +7,12 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getNoahHome, loadLocalState, saveLocalState } from './local-state.js';
 import { createLaunchers } from './launcher.js';
+import { describeLanguage, normalizeLanguageTag } from './preferences.js';
+import { DEFAULT_RELEASE_SOURCE, describeReleaseSource, isValidChannel, loadReleaseIndex, selectUpdateCandidate } from './release-index.js';
+import { FAILURE_RETRY_MINUTES, evaluateUpdateCheck, resolveUpdatePolicy } from './update-policy.js';
+import { compareVersions, isVersionCompatible } from './version.js';
 
-const CLI_VERSION = '0.1.0';
+const CLI_VERSION = '0.1.1';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
 const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,6 +26,9 @@ Usage:
   noah status [--cwd <path>]
   noah decline [--cwd <path>]
   noah onboarding [--cwd <path>]
+  noah link
+  noah update-check [--cwd <path>] [--source <https-url|file>] [--force]
+  noah language [<tag>|clear]
   noah --version
   noah --help
 
@@ -31,16 +38,26 @@ Commands:
   status     Show local Core installation and current project status
   decline    Remember a declined installation choice in user-local state
   onboarding Report whether installation should be offered for this project
+  link       Create user-local launcher files without changing PATH
+  update-check
+             Check the release index for a newer compatible Core when the
+             project's check schedule is due. Reports only; never installs.
+  language   Show, set, or clear the language Claude Code uses to talk to
+             you, for example "noah language vi". Stored in user-local
+             state only; code and technical artifacts stay in English.
 
 Options:
   --cwd      Target project directory (defaults to the current directory)
+  --source   Release index location for update-check (https:// URL or local
+             file). Defaults to the official index.
+  --force    Run update-check even when the schedule says it is not due
   --help     Show this help message
   --version  Show the CLI version
 `);
 }
 
 function parseArguments(args) {
-  const result = { command: null, cwd: process.cwd(), help: false, version: false };
+  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false };
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
@@ -56,12 +73,21 @@ function parseArguments(args) {
       }
       result.cwd = path.resolve(value);
       index += 1;
+    } else if (argument === '--source') {
+      const value = args[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error('Option --source requires a URL or file path.');
+      }
+      result.source = value;
+      index += 1;
+    } else if (argument === '--force') {
+      result.force = true;
     } else if (argument.startsWith('-')) {
       throw new Error(`Unknown option: ${argument}`);
     } else if (result.command === null) {
       result.command = argument;
     } else {
-      throw new Error(`Unexpected argument: ${argument}`);
+      result.arguments.push(argument);
     }
   }
 
@@ -174,6 +200,7 @@ This project declares Noah Kit in \`.noah-kit/manifest.json\`. Read that manifes
 ## Mandatory rules
 
 - Write all code, identifiers, code comments, tests, configuration keys, and technical documentation in English.
+- Talk to the user in the language set in \`preferences.communication_language\` of the user-local state file described below (for example, \`vi\` is Vietnamese). This covers conversation, explanations, questions, and status reports only; code and technical artifacts stay in English. If it is not set, reply in the language the user writes in. The user can change it with \`npx --yes github:w-vi-khang/noah-kit language <tag>\`.
 - Treat \`.noah-kit/manifest.json\` as committed project configuration, not as a place for user-local state or secrets.
 - Do not claim a test or verification passed unless it was actually run and its result was observed.
 - Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.
@@ -235,39 +262,6 @@ async function initializeProject(root) {
   process.stdout.write(`Initialized Noah Kit project files:\n${plannedChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n`);
 }
 
-function compareVersions(left, right) {
-  if (!/^\d+\.\d+\.\d+$/.test(left) || !/^\d+\.\d+\.\d+$/.test(right)) {
-    throw new Error('Core versions must use the stable MAJOR.MINOR.PATCH format.');
-  }
-  const leftParts = left.split('.').map(Number);
-  const rightParts = right.split('.').map(Number);
-  for (let index = 0; index < 3; index += 1) {
-    if (leftParts[index] > rightParts[index]) return 1;
-    if (leftParts[index] < rightParts[index]) return -1;
-  }
-  return 0;
-}
-
-function isVersionCompatible(version, range) {
-  const terms = range.trim().split(/\s+/);
-  if (terms.length === 0 || !range.trim()) {
-    throw new Error('The project Core version range is empty.');
-  }
-
-  return terms.every((term) => {
-    const match = term.match(/^(>=|<=|>|<|=)?(\d+\.\d+\.\d+)$/);
-    if (!match) {
-      throw new Error(`Unsupported Core version range syntax: "${range}". Use space-separated exact versions or >=, >, <=, < constraints.`);
-    }
-    const operator = match[1] ?? '=';
-    const comparison = compareVersions(version, match[2]);
-    if (operator === '>=') return comparison >= 0;
-    if (operator === '>') return comparison > 0;
-    if (operator === '<=') return comparison <= 0;
-    if (operator === '<') return comparison < 0;
-    return comparison === 0;
-  });
-}
 async function readPackageMetadata() {
   const packagePath = path.join(PACKAGE_ROOT, 'package.json');
   const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
@@ -384,10 +378,23 @@ async function declineInstallation(root) {
   process.stdout.write(`Installation decline recorded in user-local state for ${projectManifest.project.name}.\nNo project files were changed.\nThe reminder interval is ${remindAfterDays} day(s); this command records the preference but does not schedule a background process.\n`);
 }
 
+async function isValidCoreInstallation(version, installation) {
+  const markerPath = path.join(installation.path, 'core-manifest.json');
+  const cliPath = path.join(installation.path, 'src', 'cli.js');
+  if (!(await exists(markerPath)) || !(await exists(cliPath))) return false;
+  let marker;
+  try {
+    marker = JSON.parse(await readFile(markerPath, 'utf8'));
+  } catch {
+    return false;
+  }
+  return marker?.schema_version === 1 && marker.package_name === 'noah-kit' && marker.version === version;
+}
+
 async function showOnboarding(root) {
   const projectManifest = await readProjectManifest(root);
   if (!projectManifest) {
-    process.stdout.write('NO_KIT_PROJECT: no Noah Kit manifest found.\\n');
+    process.stdout.write('NO_KIT_PROJECT: no Noah Kit manifest found.\n');
     return;
   }
 
@@ -398,23 +405,14 @@ async function showOnboarding(root) {
 
   for (const [version, installation] of Object.entries(state.installations)) {
     if (!isVersionCompatible(version, versionRange)) continue;
-    const markerPath = path.join(installation.path, 'core-manifest.json');
-    const cliPath = path.join(installation.path, 'src', 'cli.js');
-    if (!(await exists(markerPath)) || !(await exists(cliPath))) continue;
-    let marker;
-    try {
-      marker = JSON.parse(await readFile(markerPath, 'utf8'));
-    } catch {
-      continue;
-    }
-    if (marker.schema_version === 1 && marker.package_name === 'noah-kit' && marker.version === version) {
-      process.stdout.write(`CORE_READY: compatible Core ${version} is installed at ${installation.path}.\\n`);
+    if (await isValidCoreInstallation(version, installation)) {
+      process.stdout.write(`CORE_READY: compatible Core ${version} is installed at ${installation.path}.\n`);
       return;
     }
   }
 
   if (!isVersionCompatible(CLI_VERSION, versionRange)) {
-    process.stdout.write(`NO_COMPATIBLE_RELEASE: current CLI ${CLI_VERSION} does not satisfy required range ${versionRange}. Do not attempt installation with this release.\\n`);
+    process.stdout.write(`NO_COMPATIBLE_RELEASE: current CLI ${CLI_VERSION} does not satisfy required range ${versionRange}. Do not attempt installation with this release.\n`);
     return;
   }
 
@@ -425,13 +423,137 @@ async function showOnboarding(root) {
       : (Number.isInteger(projectManifest.updates?.remind_after_days) && projectManifest.updates.remind_after_days >= 0 ? projectManifest.updates.remind_after_days : 1);
     const reminderAt = declinedAt + remindAfterDays * 24 * 60 * 60 * 1000;
     if (Number.isFinite(declinedAt) && Date.now() < reminderAt) {
-      process.stdout.write(`INSTALL_DECLINED: do not prompt again before ${new Date(reminderAt).toISOString()}.\\n`);
+      process.stdout.write(`INSTALL_DECLINED: do not prompt again before ${new Date(reminderAt).toISOString()}.\n`);
       return;
     }
   }
 
-  process.stdout.write('PROMPT_INSTALL: no compatible Core is registered; ask the user before installing.\\n');
+  process.stdout.write('PROMPT_INSTALL: no compatible Core is registered; ask the user before installing.\n');
 }
+
+// The newest valid local Core that satisfies the project range, or the running
+// CLI version when none is installed. Releases are compared against this.
+async function findBaselineVersion(state, versionRange) {
+  let baseline = null;
+  for (const [version, installation] of Object.entries(state.installations)) {
+    if (versionRange && !isVersionCompatible(version, versionRange)) continue;
+    if (!(await isValidCoreInstallation(version, installation))) continue;
+    if (!baseline || compareVersions(version, baseline) > 0) baseline = version;
+  }
+  return baseline ?? CLI_VERSION;
+}
+
+async function checkForUpdates(root, { source, force }) {
+  const projectManifest = await readProjectManifest(root);
+  const updates = projectManifest?.updates;
+  const policy = resolveUpdatePolicy(updates);
+  const channel = updates?.channel ?? 'stable';
+  if (!isValidChannel(channel)) {
+    throw new Error(`Unsupported updates.channel "${channel}".`);
+  }
+  const versionRange = projectManifest?.kit.core_version_range ?? null;
+  if (versionRange) {
+    // Surface range syntax errors as configuration errors before any state is
+    // written, instead of recording them as a failed release check.
+    isVersionCompatible(CLI_VERSION, versionRange);
+  }
+  // The source is deliberately not read from the environment or the manifest,
+  // which committed project configuration can influence.
+  const releaseSource = describeReleaseSource(source ?? DEFAULT_RELEASE_SOURCE);
+  const noahHome = getNoahHome();
+  const state = await loadLocalState(noahHome);
+
+  if (!force) {
+    // A record from a different source says nothing about this source.
+    const previous = state.update_checks?.[channel];
+    const decision = evaluateUpdateCheck(previous?.source === releaseSource.location ? previous : undefined, policy);
+    if (decision.reason === 'DISABLED') {
+      process.stdout.write('CHECK_DISABLED: updates.check_on_startup is false for this project. Use --force to check manually.\n');
+      return 0;
+    }
+    if (!decision.due) {
+      process.stdout.write(`CHECK_NOT_DUE: the next ${channel} release check is due at ${decision.nextCheckAt.toISOString()} (${decision.reason}). Use --force to check now.\n`);
+      return 0;
+    }
+  }
+
+  const baselineVersion = await findBaselineVersion(state, versionRange);
+  const attemptedAt = new Date().toISOString();
+  let candidate = null;
+  let failure = null;
+  try {
+    const { index } = await loadReleaseIndex(releaseSource.location);
+    candidate = selectUpdateCandidate(index, { channel, baselineVersion, versionRange });
+  } catch (error) {
+    failure = error.message;
+  }
+
+  // Reload before writing so changes made by another command during the
+  // network request are not discarded.
+  const latestState = await loadLocalState(noahHome);
+  const record = {
+    ...(latestState.update_checks?.[channel] ?? {}),
+    source: releaseSource.location,
+    last_attempt_at: attemptedAt
+  };
+  if (failure) {
+    record.last_result = 'FAILED';
+    record.last_error = failure.slice(0, 500);
+  } else {
+    delete record.last_error;
+    record.last_result = candidate ? 'UPDATE_AVAILABLE' : 'UP_TO_DATE';
+    record.last_success_at = attemptedAt;
+    record.latest_known_version = candidate?.version ?? null;
+  }
+  latestState.update_checks = { ...(latestState.update_checks ?? {}), [channel]: record };
+  await saveLocalState(noahHome, latestState);
+
+  if (releaseSource.location !== DEFAULT_RELEASE_SOURCE) {
+    process.stderr.write(`Warning: using a non-default release source: ${releaseSource.location}\n`);
+  }
+  const rangeDescription = versionRange ? `the project range "${versionRange}"` : 'no project range (no manifest found)';
+  if (failure) {
+    process.stdout.write(`CHECK_FAILED: ${failure}\nThe failure was recorded in local state. The next scheduled check waits at least ${FAILURE_RETRY_MINUTES} minutes; use --force to retry sooner.\n`);
+    return 1;
+  }
+  if (!candidate) {
+    process.stdout.write(`UP_TO_DATE: no ${channel} release newer than ${baselineVersion} satisfies ${rangeDescription}.\n`);
+    return 0;
+  }
+  process.stdout.write(`UPDATE_AVAILABLE: Core ${candidate.version} (${candidate.classification}, published ${candidate.published_at}) is newer than ${baselineVersion} and satisfies ${rangeDescription}.\nPinned source: ${candidate.source.repository} at commit ${candidate.source.commit}.\nNothing was downloaded or installed. Installing releases from the index is not implemented yet.\n`);
+  if (updates?.auto_install === true) {
+    process.stdout.write('Note: updates.auto_install is ignored; automatic installation is not implemented.\n');
+  }
+  return 0;
+}
+async function configureLanguage(value) {
+  const noahHome = getNoahHome();
+  const state = await loadLocalState(noahHome);
+  const current = state.preferences?.communication_language;
+
+  if (value === undefined) {
+    process.stdout.write(current
+      ? `Communication language: ${describeLanguage(current)}\n`
+      : 'Communication language: not set. Claude Code replies in the language you write in.\n');
+    return;
+  }
+
+  if (value === 'clear') {
+    if (state.preferences) {
+      const { communication_language, ...remainingPreferences } = state.preferences;
+      state.preferences = remainingPreferences;
+    }
+    await saveLocalState(noahHome, state);
+    process.stdout.write('Communication language cleared from user-local state. No project files were changed.\n');
+    return;
+  }
+
+  const language = normalizeLanguageTag(value);
+  state.preferences = { ...(state.preferences ?? {}), communication_language: language };
+  await saveLocalState(noahHome, state);
+  process.stdout.write(`Communication language set to ${describeLanguage(language)} in user-local state.\nThis affects conversation only; code and technical artifacts stay in English. No project files were changed.\n`);
+}
+
 async function showStatus(root) {
   const noahHome = getNoahHome();
   const state = await loadLocalState(noahHome);
@@ -439,6 +561,8 @@ async function showStatus(root) {
   const projectManifest = await readProjectManifest(root);
 
   process.stdout.write('Noah Kit status\n');
+  const language = state.preferences?.communication_language;
+  process.stdout.write(`Communication language: ${language ? describeLanguage(language) : 'not set'}\n`);
   if (installedVersions.length === 0) {
     process.stdout.write('Core: not registered as installed\n');
   } else {
@@ -483,8 +607,17 @@ export async function run(args = process.argv.slice(2)) {
     process.stdout.write(`${CLI_VERSION}\n`);
     return 0;
   }
-  if (!['init', 'install', 'status', 'decline', 'onboarding', 'link'].includes(options.command)) {
-    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding, link.\nUse --help to see usage.\n');
+  if (!['init', 'install', 'status', 'decline', 'onboarding', 'link', 'update-check', 'language'].includes(options.command)) {
+    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding, link, update-check, language.\nUse --help to see usage.\n');
+    return 2;
+  }
+  const maximumArguments = options.command === 'language' ? 1 : 0;
+  if (options.arguments.length > maximumArguments) {
+    process.stderr.write(`Unexpected argument: ${options.arguments[maximumArguments]}\nUse --help to see available commands.\n`);
+    return 2;
+  }
+  if (options.command !== 'update-check' && (options.source !== undefined || options.force)) {
+    process.stderr.write('Options --source and --force are only supported by update-check.\n');
     return 2;
   }
 
@@ -497,6 +630,10 @@ export async function run(args = process.argv.slice(2)) {
       await declineInstallation(options.cwd);
     } else if (options.command === 'onboarding') {
       await showOnboarding(options.cwd);
+    } else if (options.command === 'language') {
+      await configureLanguage(options.arguments[0]);
+    } else if (options.command === 'update-check') {
+      return await checkForUpdates(options.cwd, options);
     } else if (options.command === 'link') {
       const launchers = await createLaunchers();
       process.stdout.write(`Created Noah Kit launchers in:\n  ${launchers.binDirectory}\nAdd this directory to your PATH manually if you want to run noah from any terminal. No shell configuration was changed.\n`);

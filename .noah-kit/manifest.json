@@ -2,7 +2,7 @@
   "schema_version": 1,
   "kit": {
     "id": "noah-kit",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "core_version_range": ">=0.1.0 <0.2.0"
   },
   "project": {

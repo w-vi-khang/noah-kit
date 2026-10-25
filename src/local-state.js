@@ -2,9 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { isCanonicalLanguageTag } from './preferences.js';
+import { isIsoTimestamp } from './timestamp.js';
 
 const STATE_SCHEMA_VERSION = 1;
 const STATE_FILE_NAME = 'state.json';
+export const UPDATE_CHECK_RESULTS = ['UP_TO_DATE', 'UPDATE_AVAILABLE', 'FAILED'];
 
 export function getNoahHome(environment = process.env, homeDirectory = os.homedir()) {
   const configuredHome = environment.NOAH_HOME;
@@ -49,7 +52,48 @@ function validateState(state) {
       throw new Error('Local state contains an invalid project entry.');
     }
   }
+  if (state.update_checks !== undefined) {
+    validateUpdateChecks(state.update_checks);
+  }
+  if (state.preferences !== undefined) {
+    validatePreferences(state.preferences);
+  }
   return state;
+}
+
+// preferences holds personal settings that must not be committed to a
+// project, such as the language Claude Code uses to talk to this user.
+function validatePreferences(preferences) {
+  if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
+    throw new Error('Local state preferences must be an object.');
+  }
+  if (preferences.communication_language !== undefined && !isCanonicalLanguageTag(preferences.communication_language)) {
+    throw new Error('Local state preferences.communication_language must be a canonical BCP 47 language tag such as "vi".');
+  }
+}
+
+// update_checks is optional so state written before release checks existed
+// remains valid without a schema migration.
+function validateUpdateChecks(updateChecks) {
+  if (!updateChecks || typeof updateChecks !== 'object' || Array.isArray(updateChecks)) {
+    throw new Error('Local state update_checks must be an object.');
+  }
+  for (const [channel, record] of Object.entries(updateChecks)) {
+    if (!/^[a-z][a-z0-9-]{0,31}$/.test(channel) || !record || typeof record !== 'object' || Array.isArray(record)) {
+      throw new Error('Local state contains an invalid update check entry.');
+    }
+    for (const field of ['last_attempt_at', 'last_success_at']) {
+      if (record[field] !== undefined && !isIsoTimestamp(record[field])) {
+        throw new Error(`Local state update check ${channel}.${field} must be an ISO 8601 timestamp.`);
+      }
+    }
+    if (record.last_result !== undefined && !UPDATE_CHECK_RESULTS.includes(record.last_result)) {
+      throw new Error(`Local state update check ${channel}.last_result is not supported.`);
+    }
+    if (record.latest_known_version !== undefined && record.latest_known_version !== null && !/^\d+\.\d+\.\d+$/.test(record.latest_known_version)) {
+      throw new Error(`Local state update check ${channel}.latest_known_version must be a stable version or null.`);
+    }
+  }
 }
 
 export async function loadLocalState(noahHome) {

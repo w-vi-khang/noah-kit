@@ -87,3 +87,54 @@ test('rejects malformed installation records rather than trusting their paths', 
     await assert.rejects(loadLocalState(root), /invalid Core installation entry/);
   });
 });
+
+test('round-trips optional update check records', async () => {
+  await withTemporaryHome(async (root) => {
+    const state = await loadLocalState(root);
+    state.update_checks = {
+      stable: {
+        source: 'https://example.com/releases.json',
+        last_attempt_at: '2026-10-26T17:00:00.000Z',
+        last_success_at: '2026-10-26T17:00:00.000Z',
+        last_result: 'UPDATE_AVAILABLE',
+        latest_known_version: '0.1.1'
+      }
+    };
+
+    await saveLocalState(root, state);
+    assert.deepEqual(await loadLocalState(root), state);
+  });
+});
+
+test('rejects malformed update check records', async () => {
+  await withTemporaryHome(async (root) => {
+    const base = { schema_version: 1, installations: {}, projects: {} };
+    const cases = [
+      [{ ...base, update_checks: [] }, /update_checks must be an object/],
+      [{ ...base, update_checks: { stable: { last_result: 'MAYBE' } } }, /last_result is not supported/],
+      [{ ...base, update_checks: { stable: { last_success_at: 'yesterday' } } }, /ISO 8601/],
+      [{ ...base, update_checks: { stable: { last_attempt_at: 'Nov 1 2026' } } }, /ISO 8601/],
+      [{ ...base, update_checks: { stable: { latest_known_version: 'latest' } } }, /stable version or null/],
+      [{ ...base, update_checks: { 'Bad Channel': {} } }, /invalid update check entry/]
+    ];
+    for (const [candidate, pattern] of cases) {
+      await writeFile(getStatePath(root), JSON.stringify(candidate));
+      await assert.rejects(loadLocalState(root), pattern);
+    }
+  });
+});
+
+test('validates the optional communication language preference', async () => {
+  await withTemporaryHome(async (root) => {
+    const state = await loadLocalState(root);
+    state.preferences = { communication_language: 'vi' };
+    await saveLocalState(root, state);
+    assert.deepEqual(await loadLocalState(root), state);
+
+    const base = { schema_version: 1, installations: {}, projects: {} };
+    for (const preferences of [[], { communication_language: 'Vietnamese' }, { communication_language: 'pt-br' }]) {
+      await writeFile(getStatePath(root), JSON.stringify({ ...base, preferences }));
+      await assert.rejects(loadLocalState(root), /preferences/);
+    }
+  });
+});
