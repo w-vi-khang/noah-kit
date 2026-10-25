@@ -34,7 +34,7 @@ test('initializes a fresh project with a valid manifest and Claude Code rule', a
     const instructions = await readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8');
     const canonicalInstructions = await readFile(path.resolve(path.dirname(cliPath), '..', '.claude', 'rules', 'noah-kit.md'), 'utf8');
 
-    assert.equal(instructions, canonicalInstructions);
+    assert.equal(instructions.replace(/\\r\\n/g, '\\n'), canonicalInstructions.replace(/\\r\\n/g, '\\n'));
     assert.equal(manifest.kit.id, 'noah-kit');
     assert.equal(manifest.project.name, 'sample-app');
     assert.ok(manifest.project.id.length > 0);
