@@ -2,7 +2,6 @@
 
 import { randomUUID } from 'node:crypto';
 import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -240,6 +239,7 @@ async function readPackageMetadata() {
 
 async function installCore(root) {
   const packageJson = await readPackageMetadata();
+  const projectManifest = await readProjectManifest(root);
   const noahHome = getNoahHome();
   const versionsDirectory = path.join(noahHome, 'versions');
   const installDirectory = path.join(versionsDirectory, CLI_VERSION);
@@ -295,7 +295,6 @@ async function installCore(root) {
     last_verified_at: new Date().toISOString()
   };
 
-  const projectManifest = await readProjectManifest(root);
   if (projectManifest) {
     const previousProjectState = state.projects[projectManifest.project.id] ?? {};
     state.projects[projectManifest.project.id] = {
