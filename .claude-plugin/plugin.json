@@ -1,7 +1,7 @@
 {
   "name": "noah-kit",
   "version": "0.1.1",
-  "description": "Noah Kit Core for Claude Code: tiered main-agent workflow subagents and the noah CLI.",
+  "description": "Noah Kit Core for Claude Code: workflow skills, lifecycle safeguards, tiered subagents, and the noah CLI.",
   "author": {
     "name": "w-vi-khang"
   },
@@ -13,5 +13,11 @@
     "./.claude/agents/test-engineer.md",
     "./.claude/agents/reviewer.md",
     "./.claude/agents/verifier.md"
-  ]
+  ],
+  "skills": [
+    "./skills/"
+  ],
+  "hooks": {
+    "hooks": "./hooks/hooks.json"
+  }
 }
