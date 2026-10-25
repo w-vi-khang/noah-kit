@@ -88,7 +88,9 @@ npx --yes github:w-vi-khang/noah-kit permissions --apply
 
 `--apply` creates `.claude/settings.json` only when no settings file exists. It never modifies an existing file: when the file exists and lacks a rule, the command exits with status 1, changes nothing, and prints the missing rules, every proposed rule with its reason, and the settings JSON to add by hand or with `/permissions`. A symbolic link at `.claude` or `.claude/settings.json`, a `.claude` that is not a directory, a settings path that is not a regular file, and invalid settings content are also conflicts; the command does not follow symbolic links. `docs/architecture.md` describes the conflict handling. The command does not read `.claude/settings.local.json` or user settings, does not cover a `NOAH_HOME` override, and requires an initialized project. `init` does not create the settings file; it only prints a pointer to this command. A committed settings file affects every collaborator once they trust the workspace, so review and commit it deliberately. The tests check the CLI, not whether Claude Code honors the rules; that has not been verified in a live session.
 
-Try Core as a Claude Code plugin (prototype; see `docs/agent-workflow.md`). For one session:
+The Claude Code plugin also provides workflow-orchestration, failure-diagnosis, and efficient-verification skills, plus a Stop hook that prompts for diff inspection and evidence-based reporting when the working tree is dirty. The hook is a reminder only; it does not run tests or prove correctness. These components are available when the plugin is enabled, not through the user-local Core installer.
+
+Try Core as a Claude Code plugin (see `docs/agent-workflow.md`). For one session:
 
 ```sh
 claude --plugin-dir /path/to/noah-kit
