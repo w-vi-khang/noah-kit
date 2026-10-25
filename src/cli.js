@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 
 const CLI_VERSION = '0.1.0';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
-const CLAUDE_FILE = 'CLAUDE.md';
+const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
 
 function printHelp() {
   process.stdout.write(`Noah Kit ${CLI_VERSION}\n\nUsage:\n  noah init [--cwd <path>]\n  noah --version\n  noah --help\n\nCommands:\n  init       Initialize or validate Noah Kit project files\n\nOptions:\n  --cwd      Target project directory (defaults to the current directory)\n  --help     Show this help message\n  --version  Show the CLI version\n`);
@@ -128,17 +128,17 @@ function createManifest(projectName) {
 }
 
 function createClaudeInstructions() {
-  return `# Noah Kit Project Instructions\n\nThis project declares Noah Kit in \`.noah-kit/manifest.json\`. Read that manifest before applying Noah Kit workflows.\n\n## Mandatory rules\n\n- Write all code, identifiers, code comments, tests, configuration keys, and technical documentation in English.\n- Treat \`.noah-kit/manifest.json\` as committed project configuration, not as a place for user-local state or secrets.\n- Do not claim a test or verification passed unless it was actually run and its result was observed.\n- Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.\n- If Noah Kit Core is not installed, explain the missing dependency and offer the documented installation path. Do not silently download or execute code.\n\n## Project setup\n\nThe manifest is the source of project-specific Noah Kit settings. Keep reusable kit implementation outside this repository. Store installation choices, caches, logs, and update timestamps in user-local state outside version control.\n`;
+  return `# Noah Kit Project Instructions\n\nThis project declares Noah Kit in \`.noah-kit/manifest.json\`. Read that manifest before applying Noah Kit workflows.\n\n## Mandatory rules\n\n- Write all code, identifiers, code comments, tests, configuration keys, and technical documentation in English.\n- Treat \`.noah-kit/manifest.json\` as committed project configuration, not as a place for user-local state or secrets.\n- Do not claim a test or verification passed unless it was actually run and its result was observed.\n- Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.\n- If Noah Kit Core is not installed, explain that Core installation is not available in this release. Do not silently download or execute code.\n\n## Project setup\n\nThe manifest is the source of project-specific Noah Kit settings. Keep reusable kit implementation outside this repository. Store installation choices, caches, logs, and update timestamps in user-local state outside version control.\n`;
 }
 
 async function initializeProject(root) {
   const manifestAbsolutePath = path.join(root, MANIFEST_PATH);
-  const claudeAbsolutePath = path.join(root, CLAUDE_FILE);
+  const claudeRuleAbsolutePath = path.join(root, CLAUDE_RULE_PATH);
   const manifestExists = await exists(manifestAbsolutePath);
-  const claudeExists = await exists(claudeAbsolutePath);
+  const ruleExists = await exists(claudeRuleAbsolutePath);
   let manifest;
   let manifestContent;
-  let claudeContent;
+  let ruleContent;
 
   if (manifestExists) {
     try {
@@ -154,13 +154,13 @@ async function initializeProject(root) {
     manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;
   }
 
-  if (!claudeExists) {
-    claudeContent = createClaudeInstructions();
+  if (!ruleExists) {
+    ruleContent = createClaudeInstructions();
   }
 
   const plannedChanges = [];
   if (!manifestExists) plannedChanges.push(MANIFEST_PATH);
-  if (!claudeExists) plannedChanges.push(CLAUDE_FILE);
+  if (!ruleExists) plannedChanges.push(CLAUDE_RULE_PATH);
 
   if (plannedChanges.length === 0) {
     process.stdout.write(`No changes needed. Existing Noah Kit files were preserved.\nProject: ${manifest.project.name} (${manifest.project.id})\n`);
@@ -172,8 +172,9 @@ async function initializeProject(root) {
       await mkdir(path.dirname(manifestAbsolutePath), { recursive: true });
       await writeFile(manifestAbsolutePath, manifestContent, { flag: 'wx' });
     }
-    if (!claudeExists) {
-      await writeFile(claudeAbsolutePath, claudeContent, { flag: 'wx' });
+    if (!ruleExists) {
+      await mkdir(path.dirname(claudeRuleAbsolutePath), { recursive: true });
+      await writeFile(claudeRuleAbsolutePath, ruleContent, { flag: 'wx' });
     }
   } catch (error) {
     throw new Error(`Initialization could not finish while creating ${error.path ?? 'a project file'}. Review the working tree before retrying. Original error: ${error.message}`);
