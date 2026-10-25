@@ -94,7 +94,7 @@ test('rejects unsupported commands without modifying the project', async () => {
     const result = runCli(root, 'update');
 
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /Supported commands: init, install, status/);
+    assert.match(result.stderr, /Supported commands: init, install, status, decline/);
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
@@ -173,5 +173,35 @@ test('does not install Core when the project manifest is invalid', async () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /not valid JSON/);
     await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.0', 'core-manifest.json'), 'utf8'), { code: 'ENOENT' });
+  });
+});
+
+
+test('records declined installation locally without changing committed project configuration', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
+    const originalManifest = await readFile(manifestPath, 'utf8');
+
+    const result = runCli(root, 'decline');
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Installation decline recorded in user-local state/);
+    assert.equal(await readFile(manifestPath, 'utf8'), originalManifest);
+
+    const state = JSON.parse(await readFile(path.join(root, '.test-noah-home', 'state.json'), 'utf8'));
+    const manifest = JSON.parse(originalManifest);
+    assert.ok(state.projects[manifest.project.id].declined_install_at);
+    assert.equal(state.projects[manifest.project.id].declined_remind_after_days, manifest.updates.remind_after_days);
+  });
+});
+
+test('refuses to record a declined installation without project configuration', async () => {
+  await withTemporaryProject(async (root) => {
+    const result = runCli(root, 'decline');
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Initialize the project before recording an installation choice/);
+    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'state.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
