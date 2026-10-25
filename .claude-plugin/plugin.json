@@ -1,0 +1,17 @@
+{
+  "name": "noah-kit",
+  "version": "0.1.1",
+  "description": "Noah Kit Core for Claude Code: tiered main-agent workflow subagents and the noah CLI.",
+  "author": {
+    "name": "w-vi-khang"
+  },
+  "repository": "https://github.com/w-vi-khang/noah-kit",
+  "license": "MIT",
+  "agents": [
+    "./.claude/agents/planner.md",
+    "./.claude/agents/implementer.md",
+    "./.claude/agents/test-engineer.md",
+    "./.claude/agents/reviewer.md",
+    "./.claude/agents/verifier.md"
+  ]
+}

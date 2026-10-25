@@ -1,0 +1,14 @@
+{
+  "name": "noah-kit",
+  "owner": {
+    "name": "w-vi-khang"
+  },
+  "description": "Marketplace for the Noah Kit Core plugin.",
+  "plugins": [
+    {
+      "name": "noah-kit",
+      "source": "./",
+      "description": "Noah Kit Core for Claude Code: tiered main-agent workflow subagents and the noah CLI."
+    }
+  ]
+}

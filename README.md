@@ -74,6 +74,21 @@ npx --yes github:w-vi-khang/noah-kit language vi
 
 The preference is a BCP 47 tag (`vi`, `en`, `pt-BR`) stored in user-local state, not in the project, so each developer can choose their own. It applies to conversation only; code and technical artifacts stay in English. Run `language` without a tag to show the current setting, or `language clear` to remove it. The generated Claude Code rule tells Claude to read this setting. That is an instruction, not an enforced hook, and projects initialized before this rule existed keep their old rule file until it is updated by hand.
 
+Try Core as a Claude Code plugin (prototype; see `docs/agent-workflow.md`). For one session:
+
+```sh
+claude --plugin-dir /path/to/noah-kit
+```
+
+To install it from a local clone:
+
+```sh
+claude plugin marketplace add /path/to/noah-kit
+claude plugin install noah-kit@noah-kit
+```
+
+The plugin provides the five workflow subagents as `noah-kit:<name>` and puts `noah` on the `PATH` of Claude's Bash tool (POSIX shells only). Loading it in a live session has not been verified yet.
+
 Check whether a newer compatible Core release has been published:
 
 ```sh
