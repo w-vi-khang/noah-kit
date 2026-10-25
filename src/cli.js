@@ -499,7 +499,7 @@ export async function run(args = process.argv.slice(2)) {
       await showOnboarding(options.cwd);
     } else if (options.command === 'link') {
       const launchers = await createLaunchers();
-      process.stdout.write(`Created Noah Kit launchers in:\n  ${launchers.binDirectory}\nAdd this directory to your PATH manually if you want to run `noah` from any terminal. No shell configuration was changed.\n`);
+      process.stdout.write(`Created Noah Kit launchers in:\n  ${launchers.binDirectory}\nAdd this directory to your PATH manually if you want to run noah from any terminal. No shell configuration was changed.\n`);
     } else {
       await showStatus(options.cwd);
     }
