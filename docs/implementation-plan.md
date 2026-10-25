@@ -44,6 +44,8 @@ Acceptance criteria:
 - [x] Ensure the initial Core installer does not modify project files or overwrite an unmarked existing Core directory.
 - [ ] Record update checks, successful updates, and failures in local state.
 - [x] Stage initial installation in a temporary directory before activation.
+- [x] Generate a stable user-local launcher with Unix and Windows entry-point files.
+- [x] Test launcher dispatch and refusal to overwrite unmanaged files.
 - [ ] Add staged update activation, backup, recovery, and rollback tests.
 
 ## Milestone 4: Migration framework
