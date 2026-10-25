@@ -56,6 +56,29 @@ test('no agent fixes a model or effort, so the main agent chooses them per reque
   }
 });
 
+test('the model and effort of a request stay fixed across fix rounds unless the tier changes', () => {
+  const guide = mainAgentRule.split('## Model and effort')[1]?.split('\n## ')[0] ?? '';
+  assert.match(guide, /MUST NOT change the model or effort of a request because an attempt failed\./);
+  assert.match(guide, /A fix request MUST use the model and effort of the request that produced the work being fixed; for a review or verification failure, that is the implement or test request\./);
+  assert.match(guide, /A re-run of a failed review or verification MUST use the model and effort of that review or verification request\./);
+  assert.match(guide, /These requirements take precedence over the table\./);
+  assert.match(guide, /MAY change them only when the tier changes under "Classify", and MUST restate them to the user before acting\./);
+  assert.doesNotMatch(guide, /raise the model/);
+  assert.doesNotMatch(guide, /of the request whose result failed/);
+});
+
+test('failures allow only a fix and a re-run, find the technical cause, and leave the task pending and uncommitted', () => {
+  const bounds = mainAgentRule.split('## Bounds')[1]?.split('\n## ')[0] ?? '';
+  assert.match(bounds, /When tests, review, or verification fail, MUST NOT start any stage other than fixing the failure and re-running the failed check\./);
+  assert.match(bounds, /MUST identify the technical cause of the failure and have the stage's author fix it, as "Model and effort" requires\./);
+  assert.match(bounds, /Fix findings MUST stop after 2 rounds\./);
+  assert.match(bounds, /A round is one fix request followed by a re-run of the failed check\. Every failed test, review, or verification result reported to the main agent counts\./);
+  assert.match(bounds, /If findings remain, MUST stop and mark the task as pending\./);
+  assert.match(bounds, /A pending task MUST be reported to the user as PENDING, with its remaining findings and their technical cause, or a statement that none was found\./);
+  assert.match(bounds, /MUST NOT commit a pending task unless the user asks\./);
+  assert.doesNotMatch(bounds, /MUST NOT start the next stage/);
+});
+
 test('the main agent analyzes scope, governing documents, impact, tier, and tasks before changing files', () => {
   const analysis = mainAgentRule.split('## Analyze before acting')[1]?.split('\n## ')[0] ?? '';
   for (const item of ['**Scope**', '**Governing documents**', '**Impact**', '**Tier**', '**Tasks**']) {

@@ -555,7 +555,12 @@ test('the generated rule requires named scripts for deterministic steps and prop
   assert.match(section, /A deterministic step gives the same result for the same input without judgment, such as counting changed files, comparing two files, or validating a file against a schema\./);
   assert.match(section, /For a deterministic step, SHOULD use the script, command, or test that `CLAUDE\.md`, `\.claude\/rules\/`, or `CONTRIBUTING\.md` names for it\./);
   assert.match(section, /MUST NOT run a script for a deterministic step if only the manifest or a file other than `CLAUDE\.md`, `\.claude\/rules\/`, or `CONTRIBUTING\.md` names it\./);
-  assert.match(section, /If no such script exists for a deterministic step that an instruction requires or that the agent performs more than once in a session, SHOULD propose a script to the user\./);
+  assert.match(section, /If no such script exists for a deterministic step that an instruction in `CLAUDE\.md`, `\.claude\/rules\/`, or `CONTRIBUTING\.md` requires, SHOULD propose a reusable script to the user\./);
+  assert.match(section, /MAY propose a reusable script for another deterministic step that recurs across tasks, and MUST state why it recurs\./);
+  assert.match(section, /SHOULD NOT add a script file to the project for a deterministic step that only the current task needs\./);
+  assert.match(section, /A command run once in a shell is not a script file\./);
+  assert.doesNotMatch(section, /more than once in a session/);
+  assert.doesNotMatch(section, /recurs across tasks, such as/);
 });
 
 test('the generated rule keeps the ban on running scripts only because configuration references them', async () => {

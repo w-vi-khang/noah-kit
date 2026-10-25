@@ -64,11 +64,13 @@ Subagent definitions do not fix a model or effort. For every subagent request, t
 | T2 implement or test | `sonnet` | `medium` |
 | Any other request | `sonnet` | `high` |
 
-If a previous attempt at the same request failed review or verification, MUST raise the model one step and the effort one step from that attempt, and MUST stay at the highest value when already there. Order: `haiku` < `sonnet` < `opus`; `low` < `medium` < `high` < `xhigh` < `max`.
+MUST NOT change the model or effort of a request because an attempt failed. A fix request MUST use the model and effort of the request that produced the work being fixed; for a review or verification failure, that is the implement or test request. A re-run of a failed review or verification MUST use the model and effort of that review or verification request. These requirements take precedence over the table. MAY change them only when the tier changes under "Classify", and MUST restate them to the user before acting.
 
 ## Bounds
 
-- Fix findings MUST stop after 2 rounds, counting review and verification failures together. If findings remain, MUST stop and report them to the user.
+- When tests, review, or verification fail, MUST NOT start any stage other than fixing the failure and re-running the failed check. MUST identify the technical cause of the failure and have the stage's author fix it, as "Model and effort" requires.
+- Fix findings MUST stop after 2 rounds. A round is one fix request followed by a re-run of the failed check. Every failed test, review, or verification result reported to the main agent counts. If findings remain, MUST stop and mark the task as pending.
+- A pending task MUST be reported to the user as PENDING, with its remaining findings and their technical cause, or a statement that none was found. MUST NOT commit a pending task unless the user asks.
 - Only the main agent commits. Subagents MUST NOT commit, push, or change branches.
 - MUST NOT push to any remote branch, including `main`, unless the user asked for that push in the current request. Leave finished work as local commits.
 
