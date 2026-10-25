@@ -4,14 +4,18 @@ Scope: the main agent (the session the user talks to) in this repository. It dec
 
 ## Classify before acting
 
-For any request that changes files, the main agent MUST assign a tier before the first file change and tell the user the tier and a one-line reason. Use the highest tier whose criterion matches. If no criterion matches, use T1.
+For any request that changes files, the main agent MUST assign a tier before the first file change and MUST tell the user the tier and a one-line reason.
+
+1. If the change touches at most 2 files and changes neither behavior nor meaning (typos, formatting, code comments), the tier is T0, whatever the paths.
+2. Otherwise, the tier is the highest one whose criterion matches. If none matches, the tier is T1.
+
+File counts exclude test files. Files in different top-level directories (for example `src/` and `docs/`) belong to different modules.
 
 | Tier | Criterion (any one matches) |
 | --- | --- |
-| T3 Critical | Touches installation, update, migration, rollback, local-state schema or persistence, release integrity or trust, credentials or permissions, hooks, executing external code, or deleting or overwriting user data. Also any change the project's instructions mark safety-critical, and any breaking change to a public command or file format. |
+| T3 Critical | Touches installation, update, migration, rollback, local-state schema or persistence, release index validation or release sources, credentials, permission settings, hooks, executing external code, or deleting or overwriting user data. Also any path listed as safety-critical in the project's `CLAUDE.md`, and any breaking change to a public command or file format. |
 | T2 Standard | Adds or changes a command, public interface, or file format; changes behavior in more than 3 files or more than one module; or changes instruction files, agent definitions, or Claude Code settings (`CLAUDE.md`, `.claude/`). |
 | T1 Small | Changes behavior in at most 3 files of one module; or changes only tests or documentation. |
-| T0 Trivial | Edits at most 2 files without changing behavior or meaning (typos, formatting, code comments). |
 
 - MUST raise the tier as soon as new information matches a higher criterion. MUST NOT lower a tier after a T3 criterion matched.
 - If a requirement is ambiguous in a way that changes the result, MUST ask the user before planning.
@@ -21,29 +25,30 @@ For any request that changes files, the main agent MUST assign a tier before the
 
 | Stage | T0 | T1 | T2 | T3 |
 | --- | --- | --- | --- | --- |
-| Plan | — | Main agent | Main agent, or `planner` when the affected area is not yet understood | `planner`, then user approval of plan and acceptance criteria |
-| Implement | Main agent | Main agent | Main agent or `implementer` | `implementer` |
-| Tests | — | Main agent adds and runs tests, or states why no test applies | `test-engineer` for new behavior and failure paths | `test-engineer`, failure paths required |
+| Plan | — | Main agent | `planner` if the change spans more than 5 files the main agent has not read in this session; otherwise main agent | `planner`, then user approval of plan and acceptance criteria |
+| Implement | Main agent | Main agent | `implementer` if more than 3 non-test files change; otherwise main agent | `implementer` |
+| Tests | — | Main agent adds and runs tests. For test- or docs-only changes: run the affected tests, if any | `test-engineer` for new behavior and failure paths | `test-engineer`, failure paths required |
 | Review | — | — | `reviewer` | `reviewer` |
-| Verify | Re-read the diff | Run the test suite | Run the test suite; main agent checks every acceptance criterion against evidence | `verifier` on the final committed state |
+| Fix findings | — | — | The stage's author fixes; rerun tests; `reviewer` re-reviews the fix | The stage's author fixes; rerun tests; `reviewer` re-reviews the fix |
+| Verify | Re-read the diff | Run the test suite | Run the test suite; main agent checks every acceptance criterion against executed checks | `verifier` on the final working tree, before the commit |
 
 ## Delegation
 
-- Every subagent request MUST include: the goal, the files it owns, the acceptance criteria, the expected output, and what is already ruled out.
-- `reviewer` and `verifier` MUST receive the diff or commit range and the acceptance criteria, not the implementer's conclusions.
+- Every subagent request MUST include: the goal, the files it owns, the acceptance criteria, how the result will be verified, the expected output, and what is already ruled out.
+- `reviewer` and `verifier` MUST receive the diff and the acceptance criteria, not the implementer's conclusions.
 - MAY run subagents in parallel only when their owned files do not overlap.
-- MAY override a subagent's model or effort for one request when the task needs more or less capability than its default.
+- MAY override a subagent's model or effort for one request, and MUST state the reason in the request.
 - MAY invoke an available skill when its activation conditions match the current stage.
-- No hooks are defined. `CLAUDE.md` restricts adding them.
+- MUST NOT add or rely on hooks; none are defined, and `CLAUDE.md` restricts adding them.
 
 ## Bounds
 
-- Review-and-fix MUST stop after 2 rounds. If findings remain, stop and report them to the user.
+- Fix findings MUST stop after 2 rounds, counting review and verification failures together. If findings remain, MUST stop and report them to the user.
 - Only the main agent commits. Subagents MUST NOT commit, push, or change branches.
 - MUST NOT push unless the user asked for it in the current request.
 
-## Reporting
+## Evidence and reporting
 
-- MUST NOT report work as verified based only on the agent that implemented it.
-- The final report MUST state: the tier, what changed, each check run with its result, stages skipped and why, and what remains incomplete.
-- MUST call a result VERIFIED only when an executed check backs it; otherwise call it UNVERIFIED. These states are defined in `docs/architecture.md`.
+- Executed check output (tests, commands, CI) is independent evidence. A description of the result by the agent that made the change is not.
+- MUST call a result VERIFIED only when executed check output backs it; otherwise MUST call it UNVERIFIED. These states are defined in `docs/architecture.md`.
+- The final report MUST state: the tier, what changed, each check with its command, scope (working tree or commit), and exit status, stages skipped and why, and what remains incomplete.

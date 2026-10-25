@@ -10,9 +10,9 @@ You implement the change the main agent assigned, within the files it assigned.
 
 ## Constraints
 
-- MUST edit only the files listed as owned in the request. If another file must change, stop and report which file and why.
-- MUST follow the plan and acceptance criteria in the request. If they conflict with the code, stop and report the conflict.
-- MUST NOT commit, push, change branches, or rewrite git history.
+- MUST edit only the files listed as owned in the request. If another file must change, MUST stop and report which file and why.
+- MUST follow the plan and acceptance criteria in the request. If they conflict with the code, MUST stop and report the conflict.
+- MUST NOT commit, push, or change branches. MUST NOT rewrite git history.
 - MUST NOT weaken or delete an existing test to make it pass.
 - MUST run the tests named in the request, or the project's test command, after the change.
 

@@ -8,7 +8,8 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 const agentsDirectory = path.join(repositoryRoot, '.claude', 'agents');
 const mainAgentRule = readFileSync(path.join(repositoryRoot, '.claude', 'rules', 'main-agent.md'), 'utf8');
 
-const MODELS = ['opus', 'sonnet', 'haiku', 'fable', 'inherit'];
+const MODEL_ALIASES = ['opus', 'sonnet', 'haiku', 'fable', 'inherit'];
+const isValidModel = (model) => MODEL_ALIASES.includes(model) || /^claude-[a-z0-9-]+$/.test(model ?? '');
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const WRITE_TOOLS = ['Edit', 'Write', 'NotebookEdit'];
 const READ_ONLY_AGENTS = ['planner', 'reviewer', 'verifier'];
@@ -39,7 +40,7 @@ test('each agent has a matching name, a description, an explicit tool list, and 
     assert.equal(agent.fields.name, path.basename(agent.fileName, '.md'), agent.fileName);
     assert.ok(agent.fields.description?.length > 20, `${agent.fileName} needs a description`);
     assert.ok(agent.tools.length > 0, `${agent.fileName} must list its tools explicitly instead of inheriting all tools`);
-    assert.ok(MODELS.includes(agent.fields.model), `${agent.fileName} has an unsupported model`);
+    assert.ok(isValidModel(agent.fields.model), `${agent.fileName} has an unsupported model`);
     assert.ok(EFFORTS.includes(agent.fields.effort), `${agent.fileName} has an unsupported effort`);
     assert.ok(agent.body.trim().length > 0, `${agent.fileName} needs instructions`);
   }
@@ -47,8 +48,9 @@ test('each agent has a matching name, a description, an explicit tool list, and 
 
 test('no agent can start other agents', () => {
   for (const agent of agents) {
-    assert.equal(agent.tools.includes('Agent'), false, `${agent.fileName} must not have the Agent tool`);
-    assert.equal(agent.tools.includes('Task'), false, `${agent.fileName} must not have the Task tool`);
+    for (const tool of agent.tools) {
+      assert.doesNotMatch(tool, /^(Agent|Task)\b/, `${agent.fileName} must not have the ${tool} tool`);
+    }
   }
 });
 
@@ -62,15 +64,18 @@ test('planning, review, and verification agents cannot edit files', () => {
   }
 });
 
-test('subagents are told not to commit or push', () => {
-  for (const agent of agents.filter((candidate) => !READ_ONLY_AGENTS.includes(candidate.fields.name))) {
-    assert.match(agent.body, /MUST NOT commit, push/, agent.fileName);
+test('every subagent is told not to commit, push, or change branches', () => {
+  for (const agent of agents) {
+    assert.match(agent.body, /MUST NOT [^.]*commit, push, or change branches/, agent.fileName);
   }
 });
 
-test('the main-agent rule assigns a stage to every agent', () => {
+test('the main-agent stage table assigns a stage to every agent', () => {
+  const section = mainAgentRule.split('## Stages per tier')[1]?.split('\n## ')[0] ?? '';
+  const tableRows = section.split('\n').filter((line) => line.startsWith('|'));
+  assert.ok(tableRows.length > 2, 'main-agent rule must contain a stage table');
   for (const name of REQUIRED_AGENTS) {
-    assert.ok(mainAgentRule.includes(`\`${name}\``), `main-agent rule must reference ${name}`);
+    assert.ok(tableRows.some((row) => row.includes(`\`${name}\``)), `stage table must assign ${name}`);
   }
 });
 

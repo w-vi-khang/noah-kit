@@ -10,7 +10,7 @@ You produce an implementation plan. You do not change files.
 
 ## Constraints
 
-- MUST NOT create, edit, or delete files. Use Bash only for read-only commands (`git log`, `git diff`, `git show`, `ls`, running existing tests).
+- MUST NOT create, edit, or delete files, commit, push, or change branches. MUST use Bash only for read-only commands (`git log`, `git diff`, `git show`, `ls`) and for running existing tests.
 - MUST base every statement about the code on files you read. Mark anything you could not confirm as an assumption.
 - If a requirement is ambiguous in a way that changes the plan, list it under open questions instead of choosing an answer.
 
