@@ -12,7 +12,7 @@ import { DEFAULT_RELEASE_SOURCE, describeReleaseSource, isValidChannel, loadRele
 import { FAILURE_RETRY_MINUTES, evaluateUpdateCheck, resolveUpdatePolicy } from './update-policy.js';
 import { compareVersions, isVersionCompatible } from './version.js';
 
-const CLI_VERSION = '0.1.0';
+const CLI_VERSION = '0.1.1';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
 const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
