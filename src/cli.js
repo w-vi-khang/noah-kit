@@ -477,8 +477,8 @@ export async function run(args = process.argv.slice(2)) {
     process.stdout.write(`${CLI_VERSION}\n`);
     return 0;
   }
-  if (!['init', 'install', 'status', 'decline'].includes(options.command)) {
-    process.stderr.write('A command is required. Supported commands: init, install, status, decline.\nUse --help to see usage.\n');
+  if (!['init', 'install', 'status', 'decline', 'onboarding'].includes(options.command)) {
+    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding.\nUse --help to see usage.\n');
     return 2;
   }
 
