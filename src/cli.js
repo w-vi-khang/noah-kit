@@ -444,7 +444,8 @@ async function showStatus(root) {
       const installation = state.installations[version];
       const markerPath = path.join(installation.path, 'core-manifest.json');
       const markerExists = await exists(markerPath);
-      process.stdout.write(`Core ${version}: ${markerExists ? 'installed' : 'missing or incomplete'} (${installation.path})\n`);
+      const sourceExists = await exists(path.join(installation.path, 'src', 'cli.js'));
+      process.stdout.write(`Core ${version}: ${markerExists && sourceExists ? 'installed' : 'missing or incomplete'} (${installation.path})\n`);
     }
   }
 
