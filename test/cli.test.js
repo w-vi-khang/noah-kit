@@ -23,14 +23,14 @@ function runCli(root, ...args) {
   });
 }
 
-test('initializes a fresh project with a valid manifest and Claude instructions', async () => {
+test('initializes a fresh project with a valid manifest and Claude Code rule', async () => {
   await withTemporaryProject(async (root) => {
     await writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'sample-app' }));
     const result = runCli(root, 'init');
 
     assert.equal(result.status, 0, result.stderr);
     const manifest = JSON.parse(await readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'));
-    const instructions = await readFile(path.join(root, 'CLAUDE.md'), 'utf8');
+    const instructions = await readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8');
 
     assert.equal(manifest.kit.id, 'noah-kit');
     assert.equal(manifest.project.name, 'sample-app');
@@ -40,11 +40,11 @@ test('initializes a fresh project with a valid manifest and Claude instructions'
   });
 });
 
-test('is idempotent and preserves an existing valid manifest and Claude instructions', async () => {
+test('is idempotent and preserves an existing manifest and generated Claude Code rule', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
     const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
-    const instructionsPath = path.join(root, 'CLAUDE.md');
+    const instructionsPath = path.join(root, '.claude', 'rules', 'noah-kit.md');
     const originalManifest = await readFile(manifestPath, 'utf8');
     const originalInstructions = await readFile(instructionsPath, 'utf8');
 
@@ -57,7 +57,7 @@ test('is idempotent and preserves an existing valid manifest and Claude instruct
   });
 });
 
-test('does not create Claude instructions when an existing manifest is invalid', async () => {
+test('does not create a Claude Code rule when an existing manifest is invalid', async () => {
   await withTemporaryProject(async (root) => {
     const configDirectory = path.join(root, '.noah-kit');
     await mkdir(configDirectory, { recursive: true });
@@ -67,12 +67,12 @@ test('does not create Claude instructions when an existing manifest is invalid',
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /not valid JSON/);
-    await assert.rejects(readFile(path.join(root, 'CLAUDE.md'), 'utf8'), { code: 'ENOENT' });
+    await assert.rejects(readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8'), { code: 'ENOENT' });
     assert.equal(await readFile(path.join(configDirectory, 'manifest.json'), 'utf8'), '{ invalid json');
   });
 });
 
-test('preserves a user-authored CLAUDE.md and only adds the missing manifest', async () => {
+test('preserves a user-authored CLAUDE.md and adds a separate Noah Kit rule', async () => {
   await withTemporaryProject(async (root) => {
     const instructionsPath = path.join(root, 'CLAUDE.md');
     const originalInstructions = '# Existing project instructions\n';
@@ -83,6 +83,7 @@ test('preserves a user-authored CLAUDE.md and only adds the missing manifest', a
     assert.equal(result.status, 0, result.stderr);
     assert.equal(await readFile(instructionsPath, 'utf8'), originalInstructions);
     assert.ok(JSON.parse(await readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8')));
+    assert.ok(await readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8'));
     assert.match(result.stdout, /\.noah-kit[\\/]+manifest\.json/);
   });
 });
