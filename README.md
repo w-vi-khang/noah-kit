@@ -42,6 +42,14 @@ Inspect the local installation and the current project registration:
 npx --yes github:w-vi-khang/noah-kit status
 ```
 
+If you decline installation for a project, record that decision locally:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit decline
+```
+
+This stores the decision and reminder interval in local state. Automatic startup prompting and scheduled update checks are not implemented yet.
+
 The default local data directory is `~/.noah-kit/` (with the home-directory equivalent on Windows). It stores versioned Core files and `state.json`; it is not part of the project repository. Set `NOAH_HOME` only when you intentionally want to use a different local data directory. The installer copies a fixed set of files and does not run package lifecycle scripts or project migrations.
 
 **Current limitation:** this first milestone provides the initializer, not the persistent Core installer or update engine. It does not yet install Core skills, manage local state, check releases, or run migrations. Those features will be added only with explicit safety and recovery behavior.
