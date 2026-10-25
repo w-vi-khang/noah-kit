@@ -7,6 +7,7 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getNoahHome, loadLocalState, saveLocalState } from './local-state.js';
 import { createLaunchers } from './launcher.js';
+import { describeLanguage, normalizeLanguageTag } from './preferences.js';
 import { DEFAULT_RELEASE_SOURCE, describeReleaseSource, isValidChannel, loadReleaseIndex, selectUpdateCandidate } from './release-index.js';
 import { FAILURE_RETRY_MINUTES, evaluateUpdateCheck, resolveUpdatePolicy } from './update-policy.js';
 import { compareVersions, isVersionCompatible } from './version.js';
@@ -27,6 +28,7 @@ Usage:
   noah onboarding [--cwd <path>]
   noah link
   noah update-check [--cwd <path>] [--source <https-url|file>] [--force]
+  noah language [<tag>|clear]
   noah --version
   noah --help
 
@@ -40,6 +42,9 @@ Commands:
   update-check
              Check the release index for a newer compatible Core when the
              project's check schedule is due. Reports only; never installs.
+  language   Show, set, or clear the language Claude Code uses to talk to
+             you, for example "noah language vi". Stored in user-local
+             state only; code and technical artifacts stay in English.
 
 Options:
   --cwd      Target project directory (defaults to the current directory)
@@ -52,7 +57,7 @@ Options:
 }
 
 function parseArguments(args) {
-  const result = { command: null, cwd: process.cwd(), help: false, version: false, source: undefined, force: false };
+  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false };
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
@@ -82,7 +87,7 @@ function parseArguments(args) {
     } else if (result.command === null) {
       result.command = argument;
     } else {
-      throw new Error(`Unexpected argument: ${argument}`);
+      result.arguments.push(argument);
     }
   }
 
@@ -195,6 +200,7 @@ This project declares Noah Kit in \`.noah-kit/manifest.json\`. Read that manifes
 ## Mandatory rules
 
 - Write all code, identifiers, code comments, tests, configuration keys, and technical documentation in English.
+- Talk to the user in the language set in \`preferences.communication_language\` of the user-local state file described below (for example, \`vi\` is Vietnamese). This covers conversation, explanations, questions, and status reports only; code and technical artifacts stay in English. If it is not set, reply in the language the user writes in. The user can change it with \`npx --yes github:w-vi-khang/noah-kit language <tag>\`.
 - Treat \`.noah-kit/manifest.json\` as committed project configuration, not as a place for user-local state or secrets.
 - Do not claim a test or verification passed unless it was actually run and its result was observed.
 - Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.
@@ -520,6 +526,34 @@ async function checkForUpdates(root, { source, force }) {
   }
   return 0;
 }
+async function configureLanguage(value) {
+  const noahHome = getNoahHome();
+  const state = await loadLocalState(noahHome);
+  const current = state.preferences?.communication_language;
+
+  if (value === undefined) {
+    process.stdout.write(current
+      ? `Communication language: ${describeLanguage(current)}\n`
+      : 'Communication language: not set. Claude Code replies in the language you write in.\n');
+    return;
+  }
+
+  if (value === 'clear') {
+    if (state.preferences) {
+      const { communication_language, ...remainingPreferences } = state.preferences;
+      state.preferences = remainingPreferences;
+    }
+    await saveLocalState(noahHome, state);
+    process.stdout.write('Communication language cleared from user-local state. No project files were changed.\n');
+    return;
+  }
+
+  const language = normalizeLanguageTag(value);
+  state.preferences = { ...(state.preferences ?? {}), communication_language: language };
+  await saveLocalState(noahHome, state);
+  process.stdout.write(`Communication language set to ${describeLanguage(language)} in user-local state.\nThis affects conversation only; code and technical artifacts stay in English. No project files were changed.\n`);
+}
+
 async function showStatus(root) {
   const noahHome = getNoahHome();
   const state = await loadLocalState(noahHome);
@@ -527,6 +561,8 @@ async function showStatus(root) {
   const projectManifest = await readProjectManifest(root);
 
   process.stdout.write('Noah Kit status\n');
+  const language = state.preferences?.communication_language;
+  process.stdout.write(`Communication language: ${language ? describeLanguage(language) : 'not set'}\n`);
   if (installedVersions.length === 0) {
     process.stdout.write('Core: not registered as installed\n');
   } else {
@@ -571,8 +607,13 @@ export async function run(args = process.argv.slice(2)) {
     process.stdout.write(`${CLI_VERSION}\n`);
     return 0;
   }
-  if (!['init', 'install', 'status', 'decline', 'onboarding', 'link', 'update-check'].includes(options.command)) {
-    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding, link, update-check.\nUse --help to see usage.\n');
+  if (!['init', 'install', 'status', 'decline', 'onboarding', 'link', 'update-check', 'language'].includes(options.command)) {
+    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding, link, update-check, language.\nUse --help to see usage.\n');
+    return 2;
+  }
+  const maximumArguments = options.command === 'language' ? 1 : 0;
+  if (options.arguments.length > maximumArguments) {
+    process.stderr.write(`Unexpected argument: ${options.arguments[maximumArguments]}\nUse --help to see available commands.\n`);
     return 2;
   }
   if (options.command !== 'update-check' && (options.source !== undefined || options.force)) {
@@ -589,6 +630,8 @@ export async function run(args = process.argv.slice(2)) {
       await declineInstallation(options.cwd);
     } else if (options.command === 'onboarding') {
       await showOnboarding(options.cwd);
+    } else if (options.command === 'language') {
+      await configureLanguage(options.arguments[0]);
     } else if (options.command === 'update-check') {
       return await checkForUpdates(options.cwd, options);
     } else if (options.command === 'link') {

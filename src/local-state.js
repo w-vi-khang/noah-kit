@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { isCanonicalLanguageTag } from './preferences.js';
 import { isIsoTimestamp } from './timestamp.js';
 
 const STATE_SCHEMA_VERSION = 1;
@@ -54,7 +55,21 @@ function validateState(state) {
   if (state.update_checks !== undefined) {
     validateUpdateChecks(state.update_checks);
   }
+  if (state.preferences !== undefined) {
+    validatePreferences(state.preferences);
+  }
   return state;
+}
+
+// preferences holds personal settings that must not be committed to a
+// project, such as the language Claude Code uses to talk to this user.
+function validatePreferences(preferences) {
+  if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
+    throw new Error('Local state preferences must be an object.');
+  }
+  if (preferences.communication_language !== undefined && !isCanonicalLanguageTag(preferences.communication_language)) {
+    throw new Error('Local state preferences.communication_language must be a canonical BCP 47 language tag such as "vi".');
+  }
 }
 
 // update_checks is optional so state written before release checks existed

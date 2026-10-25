@@ -5,6 +5,7 @@ This project declares Noah Kit in `.noah-kit/manifest.json`. Read that manifest 
 ## Mandatory rules
 
 - Write all code, identifiers, code comments, tests, configuration keys, and technical documentation in English.
+- Talk to the user in the language set in `preferences.communication_language` of the user-local state file described below (for example, `vi` is Vietnamese). This covers conversation, explanations, questions, and status reports only; code and technical artifacts stay in English. If it is not set, reply in the language the user writes in. The user can change it with `npx --yes github:w-vi-khang/noah-kit language <tag>`.
 - Treat `.noah-kit/manifest.json` as committed project configuration, not as a place for user-local state or secrets.
 - Do not claim a test or verification passed unless it was actually run and its result was observed.
 - Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.

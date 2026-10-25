@@ -66,6 +66,14 @@ npx --yes github:w-vi-khang/noah-kit decline
 
 This stores the decision and reminder interval in local state. Automatic startup prompting is not implemented yet.
 
+Set the language Claude Code uses to talk to you, for example Vietnamese:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit language vi
+```
+
+The preference is a BCP 47 tag (`vi`, `en`, `pt-BR`) stored in user-local state, not in the project, so each developer can choose their own. It applies to conversation only; code and technical artifacts stay in English. Run `language` without a tag to show the current setting, or `language clear` to remove it. The generated Claude Code rule tells Claude to read this setting. That is an instruction, not an enforced hook, and projects initialized before this rule existed keep their old rule file until it is updated by hand.
+
 Check whether a newer compatible Core release has been published:
 
 ```sh

@@ -16,7 +16,7 @@ Project configuration lives in a committed, dedicated directory such as `.noah-k
 
 ### 3. Local state
 
-Local state lives outside the project repository, under `~/.noah-kit/` by default (or `NOAH_HOME` when explicitly overridden). The schema stores installed Core versions, project identity mappings, declined-install decisions, and per-channel release-check records (`update_checks`). Caches, backups, and operation logs are planned additions. State writes use a temporary file and rename, and invalid state is preserved with an actionable error rather than silently reset. Local state must never be committed to the project.
+Local state lives outside the project repository, under `~/.noah-kit/` by default (or `NOAH_HOME` when explicitly overridden). The schema stores installed Core versions, project identity mappings, declined-install decisions, per-channel release-check records (`update_checks`), and personal preferences such as the conversation language (`preferences.communication_language`). Caches, backups, and operation logs are planned additions. State writes use a temporary file and rename, and invalid state is preserved with an actionable error rather than silently reset. Local state must never be committed to the project.
 
 ## Claude Code adapter
 

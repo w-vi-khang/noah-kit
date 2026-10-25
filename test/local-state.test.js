@@ -123,3 +123,18 @@ test('rejects malformed update check records', async () => {
     }
   });
 });
+
+test('validates the optional communication language preference', async () => {
+  await withTemporaryHome(async (root) => {
+    const state = await loadLocalState(root);
+    state.preferences = { communication_language: 'vi' };
+    await saveLocalState(root, state);
+    assert.deepEqual(await loadLocalState(root), state);
+
+    const base = { schema_version: 1, installations: {}, projects: {} };
+    for (const preferences of [[], { communication_language: 'Vietnamese' }, { communication_language: 'pt-br' }]) {
+      await writeFile(getStatePath(root), JSON.stringify({ ...base, preferences }));
+      await assert.rejects(loadLocalState(root), /preferences/);
+    }
+  });
+});

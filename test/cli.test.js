@@ -96,7 +96,7 @@ test('rejects unsupported commands without modifying the project', async () => {
     const result = runCli(root, 'update');
 
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /Supported commands: init, install, status, decline, onboarding, link, update-check/);
+    assert.match(result.stderr, /Supported commands: init, install, status, decline, onboarding, link, update-check, language/);
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
@@ -376,5 +376,75 @@ test('refuses to overwrite an unmanaged launcher file', async () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Refusing to overwrite an unmanaged file/);
     assert.equal(await readFile(existingPath, 'utf8'), 'user-owned content');
+  });
+});
+
+test('stores the communication language in user-local state only', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
+    const originalManifest = await readFile(manifestPath, 'utf8');
+
+    const unset = runCli(root, 'language');
+    assert.equal(unset.status, 0, unset.stderr);
+    assert.match(unset.stdout, /Communication language: not set/);
+
+    const set = runCli(root, 'language', 'vi');
+    assert.equal(set.status, 0, set.stderr);
+    assert.match(set.stdout, /Communication language set to vi/);
+    assert.match(set.stdout, /code and technical artifacts stay in English/);
+    assert.equal(await readFile(manifestPath, 'utf8'), originalManifest);
+
+    const state = JSON.parse(await readFile(path.join(root, '.test-noah-home', 'state.json'), 'utf8'));
+    assert.equal(state.preferences.communication_language, 'vi');
+
+    const shown = runCli(root, 'language');
+    assert.match(shown.stdout, /Communication language: vi\b/);
+    assert.match(runCli(root, 'status').stdout, /Communication language: vi\b/);
+  });
+});
+
+test('canonicalizes language tags and clears the preference', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'language', 'PT-br').status, 0);
+    const statePath = path.join(root, '.test-noah-home', 'state.json');
+    assert.equal(JSON.parse(await readFile(statePath, 'utf8')).preferences.communication_language, 'pt-BR');
+
+    const cleared = runCli(root, 'language', 'clear');
+    assert.equal(cleared.status, 0, cleared.stderr);
+    assert.equal('communication_language' in JSON.parse(await readFile(statePath, 'utf8')).preferences, false);
+    assert.match(runCli(root, 'language').stdout, /not set/);
+  });
+});
+
+test('rejects invalid language tags without writing local state', async () => {
+  await withTemporaryProject(async (root) => {
+    for (const tag of ['vietnamese', 'v', 'vi_VN', 'vi-VN-extra-subtag']) {
+      const result = runCli(root, 'language', tag);
+      assert.equal(result.status, 1, tag);
+      assert.match(result.stderr, /Unsupported language tag/);
+    }
+    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'state.json'), 'utf8'), { code: 'ENOENT' });
+  });
+});
+
+test('rejects extra positional arguments', async () => {
+  await withTemporaryProject(async (root) => {
+    const extra = runCli(root, 'language', 'vi', 'en');
+    assert.equal(extra.status, 2);
+    assert.match(extra.stderr, /Unexpected argument: en/);
+
+    const unexpected = runCli(root, 'status', 'now');
+    assert.equal(unexpected.status, 2);
+    assert.match(unexpected.stderr, /Unexpected argument: now/);
+  });
+});
+
+test('the generated Claude Code rule applies the local communication language', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const instructions = await readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8');
+    assert.match(instructions, /preferences\.communication_language/);
+    assert.match(instructions, /code and technical artifacts stay in English/);
   });
 });
