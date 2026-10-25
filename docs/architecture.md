@@ -35,6 +35,14 @@ Project permission rules are written only by the explicit command `noah permissi
 
 Proposed direction (prototype; sources and limits in `docs/agent-workflow.md`): reusable Claude Code components (subagents, later skills, and the `noah` executable) ship in the Core plugin; the adapter keeps what a plugin cannot provide according to the Claude Code documentation, namely always-loaded rules and default Claude Code settings. Whether hooks live in the plugin or in the adapter is undecided.
 
+## Workflow skills and lifecycle hooks
+
+The Claude Code plugin registers the reusable skills under `skills/` and lifecycle hooks through `hooks/hooks.json`. Skills provide task-specific guidance for orchestration, failure diagnosis, and efficient verification.
+
+The Stop hook runs `scripts/stop-gate.js`. If Git reports a dirty working tree, it asks the main agent to inspect the diff and report verification evidence. It does not run project commands, infer the correct test command, or prove correctness. It fails open if hook input is malformed, Git is unavailable, or the hook has already blocked one stop attempt. These limits are deliberate to avoid trapping the user in a hook loop. The hook is a reminder; tests, review, and observed command output remain the source of verification evidence.
+
+Hooks and skills are shipped by the plugin. The current user-local Core installer copies only `src/`, `package.json`, and `docs/`; it does not install plugin components. Projects need the Noah Kit plugin enabled to receive these skills and hooks.
+
 ## Initialization and onboarding
 
 - `noah init` initializes a project and creates the committed project manifest and minimal Claude Code adapter files.
