@@ -19,4 +19,6 @@ Write all code in English. This includes source code, identifiers, code comments
 
 ## Current implementation boundary
 
-The initial CLI supports safe project initialization only. Update checks, Core installation, local-state management, migrations, hooks, and multi-agent orchestration are not implemented yet. Do not imply otherwise.
+The CLI currently supports `init`, `install`, `status`, `decline`, and `onboarding`. It can install the current Core version into user-local versioned storage, validate the project's supported Core version-range syntax, preserve local state, record declined-install choices, and report whether onboarding should be offered.
+
+Automatic startup prompting, scheduled release checks, remote release-integrity verification, Core update/rollback transactions, migration execution, executable Claude Code lifecycle hooks, skills, and multi-agent orchestration are not implemented or verified yet. Do not imply otherwise.
