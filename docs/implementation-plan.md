@@ -68,7 +68,6 @@ Acceptance criteria:
 - [x] Add concise project entry instructions and built-in mandatory rules.
 - [x] Store a per-user conversation language in local state (`noah language <tag>`) and reference it from the generated rule; code stays in English.
 - [ ] Offer a safe way to refresh an existing project's generated rule file when the template changes.
-- [x] Adopt an instruction authoring standard for instruction files and docs (`.claude/rules/instruction-authoring.md`).
 - [ ] Define a skill format, discovery, and installation for Core and projects.
 - [ ] Add main-agent/subagent orchestration that separates planning, implementation, testing, review, and verification.
 - [ ] Add risk-based task modes rather than always spawning multiple agents.

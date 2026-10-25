@@ -18,8 +18,9 @@ When requirements conflict, apply this priority: correctness, then clarity, then
 
 - Each file MUST state one purpose and scope. Split unrelated responsibilities into separate files or sections.
 - Each instruction MUST express one requirement or action. It MUST say when it applies and what outcome is expected.
-- Conditions and decision criteria MUST be explicit. Do not leave a decision to the reader's judgment when it can be stated.
-- Before adding or changing content, MUST check `CLAUDE.md`, `.claude/rules/`, and `CONTRIBUTING.md` for duplication, overlap, and contradiction, and resolve any found.
+- Conditions and decision criteria MUST be explicit. MUST NOT leave a decision to the reader's judgment when it can be stated.
+- MUST include only information needed for the file's purpose. Remove filler and repetition.
+- Before adding or changing content, MUST check existing instructions (at least `CLAUDE.md`, `.claude/rules/`, and `CONTRIBUTING.md`) for duplication, overlap, and contradiction, and resolve any found.
 - MUST reference an authoritative source instead of restating its content.
 - MUST NOT state unverified claims or describe commands, fields, files, or behavior that do not exist.
 - MUST NOT add abstractions, metadata, or files without a concrete use case.
@@ -28,14 +29,14 @@ When requirements conflict, apply this priority: correctness, then clarity, then
 
 ## Style requirements
 
-- Use direct, imperative sentences. Keep them short.
-- Use `MUST`, `MUST NOT`, `SHOULD`, and `MAY` with their RFC 2119 meanings, and use them consistently.
-- Order each file: mandatory requirements, then recommendations, then examples.
-- Use simple Markdown structures. Use lists for procedures, conditions, and constraints.
-- Use code blocks only for executable commands, schemas, or necessary examples.
-- Include an example only when it resolves an ambiguity or prevents a known mistake.
+- Every requirement MUST use `MUST`, `MUST NOT`, `SHOULD`, or `MAY` with its RFC 2119 meaning.
+- MUST use direct, imperative sentences. SHOULD keep each sentence to one requirement.
+- MUST order each file: mandatory requirements, then recommendations, then examples.
+- SHOULD use simple Markdown structures. MUST use lists for procedures, conditions, and constraints.
+- MUST use code blocks only for executable commands, schemas, or necessary examples.
+- MAY include an example only when it resolves an ambiguity or prevents a known mistake.
 - MUST NOT use vague terms such as "properly", "appropriately", or "as needed" unless the file defines them.
-- Use one term for one concept across all files.
+- MUST use one term for one concept across all files.
 
 ## File-type requirements
 
@@ -51,8 +52,9 @@ When requirements conflict, apply this priority: correctness, then clarity, then
 Before finishing, confirm each item. If one fails, revise the file.
 
 - The file has one purpose and scope.
+- The file contains no content beyond what its purpose needs.
 - No content duplicates or contradicts other instructions.
-- Every requirement can be followed without guessing.
+- Every requirement uses an RFC 2119 keyword and can be followed without guessing.
 - Verification criteria are present where applicable.
 - No claim is unverified, and no interface is invented.
 - The file fits the existing architecture and conventions.
