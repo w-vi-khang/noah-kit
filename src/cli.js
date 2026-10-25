@@ -20,6 +20,7 @@ Usage:
   noah install [--cwd <path>]
   noah status [--cwd <path>]
   noah decline [--cwd <path>]
+  noah onboarding [--cwd <path>]
   noah --version
   noah --help
 
@@ -28,6 +29,7 @@ Commands:
   install    Install the current Core version into user-local storage
   status     Show local Core installation and current project status
   decline    Remember a declined installation choice in user-local state
+  onboarding Report whether installation should be offered for this project
 
 Options:
   --cwd      Target project directory (defaults to the current directory)
@@ -377,6 +379,54 @@ async function declineInstallation(root) {
   process.stdout.write(`Installation decline recorded in user-local state for ${projectManifest.project.name}.\nNo project files were changed.\nThe reminder interval is ${remindAfterDays} day(s); this command records the preference but does not schedule a background process.\n`);
 }
 
+async function showOnboarding(root) {
+  const projectManifest = await readProjectManifest(root);
+  if (!projectManifest) {
+    process.stdout.write('NO_KIT_PROJECT: no Noah Kit manifest found.\\n');
+    return;
+  }
+
+  const versionRange = projectManifest.kit.core_version_range;
+  const noahHome = getNoahHome();
+  const state = await loadLocalState(noahHome);
+  const projectState = state.projects[projectManifest.project.id];
+
+  for (const [version, installation] of Object.entries(state.installations)) {
+    if (!isVersionCompatible(version, versionRange)) continue;
+    const markerPath = path.join(installation.path, 'core-manifest.json');
+    const cliPath = path.join(installation.path, 'src', 'cli.js');
+    if (!(await exists(markerPath)) || !(await exists(cliPath))) continue;
+    let marker;
+    try {
+      marker = JSON.parse(await readFile(markerPath, 'utf8'));
+    } catch {
+      continue;
+    }
+    if (marker.schema_version === 1 && marker.package_name === 'noah-kit' && marker.version === version) {
+      process.stdout.write(`CORE_READY: compatible Core ${version} is installed at ${installation.path}.\\n`);
+      return;
+    }
+  }
+
+  if (!isVersionCompatible(CLI_VERSION, versionRange)) {
+    process.stdout.write(`NO_COMPATIBLE_RELEASE: current CLI ${CLI_VERSION} does not satisfy required range ${versionRange}. Do not attempt installation with this release.\\n`);
+    return;
+  }
+
+  if (projectState?.declined_install_at) {
+    const declinedAt = Date.parse(projectState.declined_install_at);
+    const remindAfterDays = Number.isInteger(projectState.declined_remind_after_days) && projectState.declined_remind_after_days >= 0
+      ? projectState.declined_remind_after_days
+      : (Number.isInteger(projectManifest.updates?.remind_after_days) && projectManifest.updates.remind_after_days >= 0 ? projectManifest.updates.remind_after_days : 1);
+    const reminderAt = declinedAt + remindAfterDays * 24 * 60 * 60 * 1000;
+    if (Number.isFinite(declinedAt) && Date.now() < reminderAt) {
+      process.stdout.write(`INSTALL_DECLINED: do not prompt again before ${new Date(reminderAt).toISOString()}.\\n`);
+      return;
+    }
+  }
+
+  process.stdout.write('PROMPT_INSTALL: no compatible Core is registered; ask the user before installing.\\n');
+}
 async function showStatus(root) {
   const noahHome = getNoahHome();
   const state = await loadLocalState(noahHome);
@@ -439,6 +489,8 @@ export async function run(args = process.argv.slice(2)) {
       await installCore(options.cwd);
     } else if (options.command === 'decline') {
       await declineInstallation(options.cwd);
+    } else if (options.command === 'onboarding') {
+      await showOnboarding(options.cwd);
     } else {
       await showStatus(options.cwd);
     }
