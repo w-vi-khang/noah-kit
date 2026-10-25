@@ -342,8 +342,9 @@ async function installCore(root) {
 
   if (projectManifest) {
     const previousProjectState = state.projects[projectManifest.project.id] ?? {};
+    const { declined_install_at, declined_remind_after_days, ...registeredProjectState } = previousProjectState;
     state.projects[projectManifest.project.id] = {
-      ...previousProjectState,
+      ...registeredProjectState,
       name: projectManifest.project.name,
       root_path: root,
       installed_version: CLI_VERSION,
