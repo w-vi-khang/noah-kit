@@ -42,7 +42,7 @@ Inspect the local installation and the current project registration:
 npx --yes github:w-vi-khang/noah-kit status
 ```
 
-Check the onboarding decision without installing anything:
+Check the onboarding decision without installing Core:
 
 ```sh
 npx --yes github:w-vi-khang/noah-kit onboarding
