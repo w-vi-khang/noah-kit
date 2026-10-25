@@ -83,7 +83,7 @@ test('preserves a user-authored CLAUDE.md and only adds the missing manifest', a
     assert.equal(result.status, 0, result.stderr);
     assert.equal(await readFile(instructionsPath, 'utf8'), originalInstructions);
     assert.ok(JSON.parse(await readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8')));
-    assert.match(result.stdout, /\.noah-kit\/manifest\.json/);
+    assert.match(result.stdout, /\.noah-kit[\\/]+manifest\.json/);
   });
 });
 
