@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const cliPath = fileURLToPath(new URL('../src/cli.js', import.meta.url));
+const cliPath = fileURLToPath(new URL('../src/main.js', import.meta.url));
 const CORE_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const CORE_VERSION_PATTERN = CORE_VERSION.replace(/\./g, '\\.');
 
@@ -483,6 +483,14 @@ test('installs a new Core version beside an existing older one and dispatches to
   });
 });
 
+test('importing src/cli.js has no side effects', () => {
+  const modulePath = fileURLToPath(new URL('../src/cli.js', import.meta.url));
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(pathToFileURL(modulePath).href)});`, '--', '--version'], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
 test('runs when invoked through a symlinked directory', async (t) => {
   if (process.platform === 'win32') {
     t.skip('Directory symlinks need elevated rights on Windows.');
@@ -492,7 +500,7 @@ test('runs when invoked through a symlinked directory', async (t) => {
     const linkedSource = path.join(root, 'linked-src');
     await symlink(path.dirname(cliPath), linkedSource, 'dir');
 
-    const result = spawnSync(process.execPath, [path.join(linkedSource, 'cli.js'), '--version'], { encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [path.join(linkedSource, 'main.js'), '--version'], { encoding: 'utf8' });
 
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stdout.trim(), CORE_VERSION);

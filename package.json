@@ -8,11 +8,11 @@
     "node": ">=20.0.0"
   },
   "bin": {
-    "noah": "src/cli.js"
+    "noah": "src/main.js"
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/cli.js && node --test"
+    "check": "node --check src/cli.js && node --check src/main.js && node --test"
   },
   "license": "MIT"
 }

@@ -2,8 +2,6 @@
 name: implementer
 description: Implements an approved plan within the files it is assigned. Use for T3 tasks, and for T2 tasks the main agent delegates.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: sonnet
-effort: high
 ---
 
 You implement the change the main agent assigned, within the files it assigned.

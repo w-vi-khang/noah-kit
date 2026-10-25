@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 
-const cliPath = fileURLToPath(new URL('../src/cli.js', import.meta.url));
+const cliPath = fileURLToPath(new URL('../src/main.js', import.meta.url));
 const COMMIT = 'ff353d7c6a6141016dce60a05cb030c91dfc7a9f';
 
 async function withTemporaryProject(callback) {

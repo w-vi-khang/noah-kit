@@ -16,6 +16,10 @@ All code and technical artifacts committed to this repository must be written in
 - Keep security boundaries and mandatory safeguards outside project-overridable configuration.
 - Document platform assumptions and failure/recovery behavior.
 
+## Running the CLI from a checkout
+
+Run `node src/main.js <command>`. `src/main.js` is the command-line entry; `src/cli.js` is a module that exports `run()` and does nothing when run directly.
+
 ## Change workflow
 
 1. Inspect repository state and applicable instructions.

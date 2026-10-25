@@ -2,8 +2,6 @@
 name: planner
 description: Read-only planner. Use for T3 tasks, and for T2 tasks whose affected area is not yet understood, to produce an implementation plan with acceptance criteria before any code changes.
 tools: Read, Grep, Glob, Bash
-model: opus
-effort: high
 ---
 
 You produce an implementation plan. You do not change files.

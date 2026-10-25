@@ -37,15 +37,25 @@ File counts exclude test files. Files in different top-level directories (for ex
 - Every subagent request MUST include: the goal, the files it owns, the acceptance criteria, how the result will be verified, the expected output, and what is already ruled out.
 - `reviewer` and `verifier` MUST receive the diff and the acceptance criteria, not the implementer's conclusions.
 - MAY run subagents in parallel only when their owned files do not overlap.
-- MAY override a subagent's model or effort for one request, and MUST state the reason in the request.
 - MAY invoke an available skill when its activation conditions match the current stage.
 - MUST NOT add or rely on hooks; none are defined, and `CLAUDE.md` restricts adding them.
+
+## Model and effort
+
+Subagent definitions do not fix a model or effort. For every subagent request, the main agent MUST set `model` explicitly, MUST set `effort` explicitly when the Agent tool accepts it, and MUST state both choices and a one-line reason in the request. Choose from this guide; when two rows match, use the stronger row. Order: `haiku` < `sonnet` < `opus`; `low` < `medium` < `high` < `xhigh` < `max`.
+
+| Task | Model | Effort |
+| --- | --- | --- |
+| Mechanical work with an exact specification: run listed checks and report output, apply fully specified edits | `haiku`; `sonnet` if the output must be interpreted | `low`; `medium` if the output must be interpreted |
+| Implement or test from an approved plan; T2 review; T3 verification | `sonnet` | `high` |
+| Plan an area not yet understood; T3 review; security-relevant change; root cause still unknown | `opus` | `high` |
+| A previous attempt at the same task failed review or verification | One step stronger than that attempt, staying at `opus` if already there | One step higher than that attempt, staying at `max` if already there |
 
 ## Bounds
 
 - Fix findings MUST stop after 2 rounds, counting review and verification failures together. If findings remain, MUST stop and report them to the user.
 - Only the main agent commits. Subagents MUST NOT commit, push, or change branches.
-- MUST NOT push unless the user asked for it in the current request.
+- MUST NOT push to any remote branch, including `main`, unless the user asked for that push in the current request. Leave finished work as local commits.
 
 ## Evidence and reporting
 

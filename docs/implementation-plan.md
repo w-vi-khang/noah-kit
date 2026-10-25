@@ -70,11 +70,11 @@ Acceptance criteria:
 - [ ] Offer a safe way to refresh an existing project's generated rule file when the template changes.
 - [ ] Define a skill format, discovery, and installation for Core and projects.
 - [ ] Enforce workflow gates with hooks (for example, blocking subagent commits or requiring verification before the final report) after a hook safety contract exists.
-- [x] Add a main-agent rule with tiered task modes (T0-T3), and five specialized subagents (`planner`, `implementer`, `test-engineer`, `reviewer`, `verifier`) for this repository. These are instructions only; `test/agents.test.js` tests their structure (required fields, no nested delegation, read-only boundaries, stage coverage), not model behavior.
+- [x] Add a main-agent rule with tiered task modes (T0-T3), and five specialized subagents (`planner`, `implementer`, `test-engineer`, `reviewer`, `verifier`) for this repository. These are instructions only; `test/agents.test.js` tests their structure (required fields, no fixed model or effort, no nested delegation, read-only boundaries, stage coverage), not model behavior. The main agent chooses each subagent's model and effort per request.
 - [x] Default the main agent to Opus 5.5 at high effort in this repository's `.claude/settings.json`.
 - [ ] Measure tier selection and stage adherence in real Claude Code sessions.
 - [x] Package Core as a Claude Code plugin prototype: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, the five subagents, and `bin/noah`. `claude plugin validate .` passes with the expected root `CLAUDE.md` warning; `test/plugin.test.js` tests version parity, agent coverage, and `bin/noah`.
-- [ ] Verify the plugin in a live Claude Code session: scoped agent names, agent model and effort, and `bin/noah` on the Bash `PATH`.
+- [ ] Verify in a live Claude Code session: scoped plugin agent names, per-request model and effort for subagents, and `bin/noah` on the Bash `PATH`.
 - [ ] Generate the project layer with `init`: the main-agent rule referencing `noah-kit:*` agents, and default `model`/`effortLevel` without overwriting an existing `.claude/settings.json`.
 - [ ] Decide the consent model for project-enabled plugins and whether the CLI `install`, `link`, and `update-check` remain.
 - [ ] Give subagents explicit task IDs, file ownership, acceptance criteria, and handoff contracts.

@@ -2,8 +2,6 @@
 name: test-engineer
 description: Writes and runs tests for new or changed behavior, including failure paths. Use for T2 and T3 tasks after implementation.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: sonnet
-effort: high
 ---
 
 You write tests that show whether the change meets its acceptance criteria.

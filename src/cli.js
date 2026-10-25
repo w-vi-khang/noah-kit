@@ -1,7 +1,4 @@
-#!/usr/bin/env node
-
 import { randomUUID } from 'node:crypto';
-import { realpathSync } from 'node:fs';
 import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -657,25 +654,4 @@ export async function run(args = process.argv.slice(2)) {
     process.stderr.write(`Noah Kit ${options.command} failed: ${error.message}\n`);
     return 1;
   }
-}
-
-// Compare real paths: Node resolves symlinks for import.meta.url but not for
-// argv, so a symlinked directory (such as /var on macOS) would otherwise make
-// the CLI exit silently without running.
-function isMainModule() {
-  if (!process.argv[1]) return false;
-  try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-
-if (isMainModule()) {
-  run().then((exitCode) => {
-    process.exitCode = exitCode;
-  }).catch((error) => {
-    process.stderr.write(`Unexpected error: ${error.message}\n`);
-    process.exitCode = 1;
-  });
 }

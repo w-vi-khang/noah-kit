@@ -8,9 +8,6 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 const agentsDirectory = path.join(repositoryRoot, '.claude', 'agents');
 const mainAgentRule = readFileSync(path.join(repositoryRoot, '.claude', 'rules', 'main-agent.md'), 'utf8');
 
-const MODEL_ALIASES = ['opus', 'sonnet', 'haiku', 'fable', 'inherit'];
-const isValidModel = (model) => MODEL_ALIASES.includes(model) || /^claude-[a-z0-9-]+$/.test(model ?? '');
-const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const WRITE_TOOLS = ['Edit', 'Write', 'NotebookEdit'];
 const READ_ONLY_AGENTS = ['planner', 'reviewer', 'verifier'];
 const REQUIRED_AGENTS = ['planner', 'implementer', 'test-engineer', 'reviewer', 'verifier'];
@@ -35,15 +32,29 @@ test('defines every agent the main-agent rule depends on', () => {
   assert.deepEqual(agents.map((agent) => agent.fields.name).sort(), [...REQUIRED_AGENTS].sort());
 });
 
-test('each agent has a matching name, a description, an explicit tool list, and a valid model and effort', () => {
+test('each agent has a matching name, a description, an explicit tool list, and instructions', () => {
   for (const agent of agents) {
     assert.equal(agent.fields.name, path.basename(agent.fileName, '.md'), agent.fileName);
     assert.ok(agent.fields.description?.length > 20, `${agent.fileName} needs a description`);
     assert.ok(agent.tools.length > 0, `${agent.fileName} must list its tools explicitly instead of inheriting all tools`);
-    assert.ok(isValidModel(agent.fields.model), `${agent.fileName} has an unsupported model`);
-    assert.ok(EFFORTS.includes(agent.fields.effort), `${agent.fileName} has an unsupported effort`);
     assert.ok(agent.body.trim().length > 0, `${agent.fileName} needs instructions`);
   }
+});
+
+test('no agent fixes a model or effort, so the main agent chooses them per request', () => {
+  for (const agent of agents) {
+    assert.equal('model' in agent.fields, false, `${agent.fileName} must not set model`);
+    assert.equal('effort' in agent.fields, false, `${agent.fileName} must not set effort`);
+  }
+  const guide = mainAgentRule.split('## Model and effort')[1]?.split('\n## ')[0] ?? '';
+  assert.match(guide, /MUST set `model` explicitly, MUST set `effort` explicitly when the Agent tool accepts it/);
+  for (const model of ['haiku', 'sonnet', 'opus']) {
+    assert.match(guide, new RegExp(`\`${model}\``), `model guide must cover ${model}`);
+  }
+});
+
+test('the main agent must not push without a request in the current turn', () => {
+  assert.match(mainAgentRule, /MUST NOT push to any remote branch, including `main`, unless the user asked for that push in the current request/);
 });
 
 test('no agent can start other agents', () => {
