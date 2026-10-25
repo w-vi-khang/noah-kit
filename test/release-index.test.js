@@ -48,7 +48,11 @@ test('rejects malformed release indexes instead of trusting them', () => {
     [index([release('0.2.0', { classification: 'minor' })]), /classification/],
     [index([release('0.2.0', { source: undefined })]), /source of type "git"/],
     [index([release('0.2.0', { source: { type: 'tarball', url: 'https://example.com/a.tgz' } })]), /source of type "git"/],
-    [index([release('0.2.0', { source: { type: 'git', repository: 'https://github.com/a/b', commit: COMMIT } })]), /github:<owner>\/<name>/],
+    [index([release('0.2.0', { source: { type: 'git', repository: 'https://github.com/a/b', commit: COMMIT } })]), /github:w-vi-khang\/noah-kit/],
+    [index([release('0.2.0', { source: { type: 'git', repository: 'github:attacker/noah-kit', commit: COMMIT } })]), /github:w-vi-khang\/noah-kit/],
+    [index([release('00.2.0')]), /stable MAJOR\.MINOR\.PATCH/],
+    [index([release('0.2.0', { published_at: '2026' })]), /published_at/],
+    [index([release('0.2.0', { published_at: 'Nov 1 2026' })]), /published_at/],
     [index([release('0.2.0', { source: { type: 'git', repository: 'github:w-vi-khang/noah-kit', commit: 'ff353d7' } })]), /40-character/],
     [index([release('0.2.0', { source: { type: 'git', repository: 'github:w-vi-khang/noah-kit', commit: COMMIT.toUpperCase() } })]), /40-character/],
     [index([release('0.2.0'), release('0.2.0')]), /more than once/]
@@ -87,6 +91,7 @@ test('accepts only https URLs or local file paths as release sources', () => {
   assert.throws(() => describeReleaseSource('http://example.com/releases.json'), /https:\/\//);
   assert.throws(() => describeReleaseSource('file:///tmp/releases.json'), /not allowed/);
   assert.throws(() => describeReleaseSource('ftp://example.com/releases.json'), /not allowed/);
+  assert.throws(() => describeReleaseSource('https://user:secret@example.com/releases.json'), /must not contain credentials/);
   assert.deepEqual(describeReleaseSource('releases.json'), { kind: 'file', location: path.resolve('releases.json') });
 });
 

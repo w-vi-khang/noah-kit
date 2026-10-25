@@ -37,7 +37,7 @@ The adapter must not assume symbolic links behave identically on Windows, macOS,
 
 Scheduled checks are evaluated when the user starts a compatible Noah Kit/Claude Code session. Noah Kit cannot promise a check at a specific wall-clock time when the application is closed. An optional operating-system scheduler may be added later, but it must be separately configured and clearly disclosed.
 
-A schedule such as 17:00 means: if a check is due and no successful check has happened for the configured interval, prompt on the next eligible startup. Use an explicit timezone. Avoid repeated prompts within the same session.
+A schedule such as 17:00 means: if a check is due and no successful check has happened for the configured interval, prompt on the next eligible startup. The timezone is `local` by default, and `UTC` can be set explicitly. Named IANA zones are not supported yet. Avoid repeated prompts within the same session.
 
 `noah update-check` implements this evaluation on demand. It reads a validated release index whose entries pin exact Git commits, selects the newest compatible release, and records the result locally. It never installs anything. See `docs/releases.md` for the index schema, the trust model, and what it does not verify. No startup hook or OS scheduler invokes it yet.
 

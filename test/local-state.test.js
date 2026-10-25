@@ -113,6 +113,7 @@ test('rejects malformed update check records', async () => {
       [{ ...base, update_checks: [] }, /update_checks must be an object/],
       [{ ...base, update_checks: { stable: { last_result: 'MAYBE' } } }, /last_result is not supported/],
       [{ ...base, update_checks: { stable: { last_success_at: 'yesterday' } } }, /ISO 8601/],
+      [{ ...base, update_checks: { stable: { last_attempt_at: 'Nov 1 2026' } } }, /ISO 8601/],
       [{ ...base, update_checks: { stable: { latest_known_version: 'latest' } } }, /stable version or null/],
       [{ ...base, update_checks: { 'Bad Channel': {} } }, /invalid update check entry/]
     ];

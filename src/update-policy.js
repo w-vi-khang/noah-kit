@@ -80,7 +80,7 @@ export function evaluateUpdateCheck(record, policy, now = new Date()) {
 
   if (record?.last_result === 'FAILED' && lastAttempt !== null && lastAttempt <= nowTime + CLOCK_SKEW_TOLERANCE_MS) {
     const retryAt = lastAttempt + FAILURE_RETRY_MINUTES * 60 * 1000;
-    if (nowTime < retryAt && (lastSuccess === null || lastSuccess < slot.getTime())) {
+    if (nowTime < retryAt) {
       return { due: false, reason: 'BACKOFF', nextCheckAt: new Date(retryAt) };
     }
   }

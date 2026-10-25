@@ -21,12 +21,7 @@ async function withTemporaryProject(callback) {
 function runCli(root, ...args) {
   return spawnSync(process.execPath, [cliPath, ...args, '--cwd', root], {
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      NOAH_HOME: path.join(root, '.test-noah-home'),
-      // Guarantees that no test reaches the network through the default source.
-      NOAH_RELEASE_SOURCE: path.join(root, 'missing-default-releases.json')
-    }
+    env: { ...process.env, NOAH_HOME: path.join(root, '.test-noah-home') }
   });
 }
 
@@ -78,6 +73,7 @@ test('reports a compatible update without downloading or installing it', async (
     assert.equal(record.latest_known_version, '0.1.1');
     assert.equal(record.last_success_at, record.last_attempt_at);
     assert.equal(record.source, indexPath);
+    assert.match(result.stderr, /non-default release source/);
   });
 });
 
@@ -244,5 +240,48 @@ test('rejects update-check options on other commands', async () => {
 
     assert.equal(result.status, 2);
     assert.match(result.stderr, /only supported by update-check/);
+  });
+});
+
+test('a check against one source does not suppress a check against another', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const firstPath = await writeIndex(root, []);
+    assert.equal(runCli(root, 'update-check', '--source', firstPath).status, 0);
+    const secondPath = path.join(root, 'mirror.json');
+    await writeFile(secondPath, JSON.stringify({ schema_version: 1, kit_id: 'noah-kit', releases: [release('0.1.1')] }));
+
+    const result = runCli(root, 'update-check', '--source', secondPath);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /^UPDATE_AVAILABLE/);
+    assert.equal((await readState(root)).update_checks.stable.source, secondPath);
+  });
+});
+
+test('fails closed on unsupported range syntax before writing local state', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    await updateManifest(root, (manifest) => { manifest.kit.core_version_range = '^0.1.0'; });
+    const indexPath = await writeIndex(root, [release('0.2.0')]);
+
+    const result = runCli(root, 'update-check', '--source', indexPath);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Unsupported Core version range syntax/);
+    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'state.json')), { code: 'ENOENT' });
+  });
+});
+
+test('fails closed on a null updates block', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    await updateManifest(root, (manifest) => { manifest.updates = null; });
+    const indexPath = await writeIndex(root, [release('0.1.1')]);
+
+    const result = runCli(root, 'update-check', '--source', indexPath);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /updates field must be an object/);
   });
 });

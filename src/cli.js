@@ -44,7 +44,7 @@ Commands:
 Options:
   --cwd      Target project directory (defaults to the current directory)
   --source   Release index location for update-check (https:// URL or local
-             file). Defaults to NOAH_RELEASE_SOURCE or the official index.
+             file). Defaults to the official index.
   --force    Run update-check even when the schedule says it is not due
   --help     Show this help message
   --version  Show the CLI version
@@ -439,19 +439,28 @@ async function findBaselineVersion(state, versionRange) {
 
 async function checkForUpdates(root, { source, force }) {
   const projectManifest = await readProjectManifest(root);
-  const updates = projectManifest?.updates ?? {};
+  const updates = projectManifest?.updates;
   const policy = resolveUpdatePolicy(updates);
-  const channel = updates.channel ?? 'stable';
+  const channel = updates?.channel ?? 'stable';
   if (!isValidChannel(channel)) {
     throw new Error(`Unsupported updates.channel "${channel}".`);
   }
   const versionRange = projectManifest?.kit.core_version_range ?? null;
-  const releaseSource = describeReleaseSource(source ?? (process.env.NOAH_RELEASE_SOURCE?.trim() || DEFAULT_RELEASE_SOURCE));
+  if (versionRange) {
+    // Surface range syntax errors as configuration errors before any state is
+    // written, instead of recording them as a failed release check.
+    isVersionCompatible(CLI_VERSION, versionRange);
+  }
+  // The source is deliberately not read from the environment or the manifest,
+  // which committed project configuration can influence.
+  const releaseSource = describeReleaseSource(source ?? DEFAULT_RELEASE_SOURCE);
   const noahHome = getNoahHome();
   const state = await loadLocalState(noahHome);
 
   if (!force) {
-    const decision = evaluateUpdateCheck(state.update_checks?.[channel], policy);
+    // A record from a different source says nothing about this source.
+    const previous = state.update_checks?.[channel];
+    const decision = evaluateUpdateCheck(previous?.source === releaseSource.location ? previous : undefined, policy);
     if (decision.reason === 'DISABLED') {
       process.stdout.write('CHECK_DISABLED: updates.check_on_startup is false for this project. Use --force to check manually.\n');
       return 0;
@@ -493,6 +502,9 @@ async function checkForUpdates(root, { source, force }) {
   latestState.update_checks = { ...(latestState.update_checks ?? {}), [channel]: record };
   await saveLocalState(noahHome, latestState);
 
+  if (releaseSource.location !== DEFAULT_RELEASE_SOURCE) {
+    process.stderr.write(`Warning: using a non-default release source: ${releaseSource.location}\n`);
+  }
   const rangeDescription = versionRange ? `the project range "${versionRange}"` : 'no project range (no manifest found)';
   if (failure) {
     process.stdout.write(`CHECK_FAILED: ${failure}\nThe failure was recorded in local state. The next scheduled check waits at least ${FAILURE_RETRY_MINUTES} minutes; use --force to retry sooner.\n`);
@@ -503,7 +515,7 @@ async function checkForUpdates(root, { source, force }) {
     return 0;
   }
   process.stdout.write(`UPDATE_AVAILABLE: Core ${candidate.version} (${candidate.classification}, published ${candidate.published_at}) is newer than ${baselineVersion} and satisfies ${rangeDescription}.\nPinned source: ${candidate.source.repository} at commit ${candidate.source.commit}.\nNothing was downloaded or installed. Installing releases from the index is not implemented yet.\n`);
-  if (updates.auto_install === true) {
+  if (updates?.auto_install === true) {
     process.stdout.write('Note: updates.auto_install is ignored; automatic installation is not implemented.\n');
   }
   return 0;

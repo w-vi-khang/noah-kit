@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { isIsoTimestamp } from './timestamp.js';
 
 const STATE_SCHEMA_VERSION = 1;
 const STATE_FILE_NAME = 'state.json';
@@ -67,7 +68,7 @@ function validateUpdateChecks(updateChecks) {
       throw new Error('Local state contains an invalid update check entry.');
     }
     for (const field of ['last_attempt_at', 'last_success_at']) {
-      if (record[field] !== undefined && (typeof record[field] !== 'string' || !Number.isFinite(Date.parse(record[field])))) {
+      if (record[field] !== undefined && !isIsoTimestamp(record[field])) {
         throw new Error(`Local state update check ${channel}.${field} must be an ISO 8601 timestamp.`);
       }
     }

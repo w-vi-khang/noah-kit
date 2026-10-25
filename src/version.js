@@ -1,4 +1,6 @@
-const STABLE_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
+// Leading zeros are rejected so that one version has exactly one spelling, and
+// components stay small enough to compare exactly as numbers.
+const STABLE_VERSION_PATTERN = /^(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})$/;
 
 export function isStableVersion(version) {
   return typeof version === 'string' && STABLE_VERSION_PATTERN.test(version);

@@ -1,9 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { compareVersions, isStableVersion, isVersionCompatible } from './version.js';
+import { isIsoTimestamp } from './timestamp.js';
 
 export const RELEASE_INDEX_SCHEMA_VERSION = 1;
 export const DEFAULT_RELEASE_SOURCE = 'https://raw.githubusercontent.com/w-vi-khang/noah-kit/main/releases.json';
+// Core accepts release entries only from this repository until a signed
+// metadata format exists, so a substituted index cannot name another source.
+export const OFFICIAL_REPOSITORY = 'github:w-vi-khang/noah-kit';
 export const RELEASE_CLASSIFICATIONS = ['security', 'patch', 'feature', 'breaking'];
 
 const MAX_INDEX_BYTES = 1024 * 1024;
@@ -11,7 +15,6 @@ const MAX_RELEASES = 1000;
 const FETCH_TIMEOUT_MS = 10000;
 const CHANNEL_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
 const GIT_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
-const GITHUB_REPOSITORY_PATTERN = /^github:[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 
 export function isValidChannel(channel) {
   return typeof channel === 'string' && CHANNEL_PATTERN.test(channel);
@@ -32,7 +35,7 @@ function validateRelease(release, index) {
   if (!isValidChannel(release.channel)) {
     throw new Error(`${label} (${release.version}) has an invalid channel.`);
   }
-  if (typeof release.published_at !== 'string' || !Number.isFinite(Date.parse(release.published_at))) {
+  if (!isIsoTimestamp(release.published_at)) {
     throw new Error(`${label} (${release.version}) must have an ISO 8601 published_at timestamp.`);
   }
   if (!RELEASE_CLASSIFICATIONS.includes(release.classification)) {
@@ -41,8 +44,8 @@ function validateRelease(release, index) {
   if (!isPlainObject(release.source) || release.source.type !== 'git') {
     throw new Error(`${label} (${release.version}) must declare a source of type "git"; other source types are not supported.`);
   }
-  if (typeof release.source.repository !== 'string' || !GITHUB_REPOSITORY_PATTERN.test(release.source.repository)) {
-    throw new Error(`${label} (${release.version}) must declare source.repository as github:<owner>/<name>.`);
+  if (release.source.repository !== OFFICIAL_REPOSITORY) {
+    throw new Error(`${label} (${release.version}) must declare source.repository as ${OFFICIAL_REPOSITORY}.`);
   }
   if (typeof release.source.commit !== 'string' || !GIT_COMMIT_PATTERN.test(release.source.commit)) {
     throw new Error(`${label} (${release.version}) must pin source.commit to a full 40-character lowercase Git commit ID.`);
@@ -103,6 +106,9 @@ export function describeReleaseSource(source) {
     }
     if (url.protocol !== 'https:') {
       throw new Error(`The release source must use https:// or be a local file path; "${url.protocol}" is not allowed.`);
+    }
+    if (url.username || url.password) {
+      throw new Error('The release source URL must not contain credentials.');
     }
     return { kind: 'url', location: url.href };
   }
