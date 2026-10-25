@@ -24,6 +24,15 @@ The adapter should be thin and generated or maintained by Noah Kit. It exposes t
 
 The adapter must not assume symbolic links behave identically on Windows, macOS, and Linux. Prefer explicit generated files or a tested platform-specific linking strategy.
 
+Project permission rules are written only by the explicit command `noah permissions --apply`, never by `init`, and never into an existing `.claude/settings.json`. `src/claude-permissions.js` is the authoritative list of the proposed rules, the reason for each, and the classification of existing paths. The rules are read-only access to the local state and Core installation paths that the generated rule's Core installation check reads. Whether Claude Code honors them is not verified in a live session.
+
+- The command inspects `.claude`, then `.claude/settings.json`, with `lstat`. It does not follow a symbolic link at either path.
+- `CONFLICT_INVALID_FILE`: either path is a symbolic link (to a directory, dangling, or a loop), `lstat` reports a symbolic link loop, `.claude` is not a directory, `settings.json` is not a regular file, or its content is not a usable settings object.
+- `CONFLICT_EXISTING_FILE`: `settings.json` is usable but its `permissions.allow` lacks a proposed rule.
+- On either conflict, the preview exits with status 0 and `--apply` exits with status 1. Both write nothing and print every proposed rule, its reason, and the settings JSON for the user to add.
+- When `settings.json` is missing, `--apply` creates `.claude` if needed, then creates the file with an exclusive create, which fails instead of replacing a `settings.json` that appears after the inspection. `.claude` is not re-checked after the inspection.
+- If the write fails after the exclusive create, the command removes the file only while the path still names the file it created, and its error says whether the file was removed.
+
 Proposed direction (prototype; sources and limits in `docs/agent-workflow.md`): reusable Claude Code components (subagents, later skills, and the `noah` executable) ship in the Core plugin; the adapter keeps what a plugin cannot provide according to the Claude Code documentation, namely always-loaded rules and default Claude Code settings. Whether hooks live in the plugin or in the adapter is undecided.
 
 ## Initialization and onboarding

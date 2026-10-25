@@ -74,6 +74,20 @@ npx --yes github:w-vi-khang/noah-kit language vi
 
 The preference is a BCP 47 tag (`vi`, `en`, `pt-BR`) stored in user-local state, not in the project, so each developer can choose their own. It applies to conversation only; code and technical artifacts stay in English. Run `language` without a tag to show the current setting, or `language clear` to remove it. The generated Claude Code rule tells Claude to read this setting. That is an instruction, not an enforced hook, and projects initialized before this rule existed keep their old rule file until it is updated by hand.
 
+Preview the Claude Code permission rules Noah Kit proposes for this project:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit permissions
+```
+
+The preview writes nothing. It reports one of `WILL_CREATE`, `ALREADY_PRESENT`, `CONFLICT_EXISTING_FILE`, or `CONFLICT_INVALID_FILE`, then lists each proposed rule with its reason. Except for `ALREADY_PRESENT`, it also prints the settings JSON. The rules are read-only `Read` permissions for `~/.noah-kit/state.json` and `~/.noah-kit/versions/**`, which the generated rule's Core installation check reads at session start. `src/claude-permissions.js` holds the authoritative list. To create the file, add `--apply`:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit permissions --apply
+```
+
+`--apply` creates `.claude/settings.json` only when no settings file exists. It never modifies an existing file: when the file exists and lacks a rule, the command exits with status 1, changes nothing, and prints the missing rules, every proposed rule with its reason, and the settings JSON to add by hand or with `/permissions`. A symbolic link at `.claude` or `.claude/settings.json`, a `.claude` that is not a directory, a settings path that is not a regular file, and invalid settings content are also conflicts; the command does not follow symbolic links. `docs/architecture.md` describes the conflict handling. The command does not read `.claude/settings.local.json` or user settings, does not cover a `NOAH_HOME` override, and requires an initialized project. `init` does not create the settings file; it only prints a pointer to this command. A committed settings file affects every collaborator once they trust the workspace, so review and commit it deliberately. The tests check the CLI, not whether Claude Code honors the rules; that has not been verified in a live session.
+
 Try Core as a Claude Code plugin (prototype; see `docs/agent-workflow.md`). For one session:
 
 ```sh
@@ -99,7 +113,7 @@ The command reads the release index (`releases.json`), compares it with the loca
 
 The default local data directory is `~/.noah-kit/` (with the home-directory equivalent on Windows). It stores versioned Core files and `state.json`; it is not part of the project repository. Set `NOAH_HOME` only when you intentionally want to use a different local data directory. The installer copies a fixed set of files and does not run package lifecycle scripts or project migrations.
 
-**Current limitations:** the CLI supports project initialization, local Core installation, status inspection, declined-install recording, onboarding decisions, local launcher generation, and on-demand release checks. The launcher does not modify `PATH` or shell configuration. Noah Kit does not yet perform automatic startup onboarding or scheduled background checks, install or update Core from a published release, verify signed release metadata, run migrations, or install skills and agent workflows. These capabilities remain disabled until their safety and recovery behavior is implemented.
+**Current limitations:** the CLI supports project initialization, local Core installation, status inspection, declined-install recording, onboarding decisions, local launcher generation, on-demand release checks, and a previewed, create-only Claude Code permission settings file. The launcher does not modify `PATH` or shell configuration. `permissions --apply` creates a missing `.claude/settings.json` but cannot merge rules into an existing one. Noah Kit does not yet perform automatic startup onboarding or scheduled background checks, install or update Core from a published release, verify signed release metadata, run migrations, or install skills and agent workflows. These capabilities remain disabled until their safety and recovery behavior is implemented.
 
 ## Initial implementation scope
 

@@ -3,6 +3,7 @@ import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/prom
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { applyPermissions, formatPreview, inspectSettings } from './claude-permissions.js';
 import { getNoahHome, loadLocalState, saveLocalState } from './local-state.js';
 import { createLaunchers } from './launcher.js';
 import { describeLanguage, normalizeLanguageTag } from './preferences.js';
@@ -24,6 +25,7 @@ Usage:
   noah status [--cwd <path>]
   noah decline [--cwd <path>]
   noah onboarding [--cwd <path>]
+  noah permissions [--apply] [--cwd <path>]
   noah link
   noah update-check [--cwd <path>] [--source <https-url|file>] [--force]
   noah language [<tag>|clear]
@@ -36,6 +38,10 @@ Commands:
   status     Show local Core installation and current project status
   decline    Remember a declined installation choice in user-local state
   onboarding Report whether installation should be offered for this project
+  permissions
+             Preview the Claude Code permission rules Noah Kit proposes for
+             this project. With --apply, create .claude/settings.json only
+             when no settings file exists; an existing file is never changed.
   link       Create user-local launcher files without changing PATH
   update-check
              Check the release index for a newer compatible Core when the
@@ -49,13 +55,14 @@ Options:
   --source   Release index location for update-check (https:// URL or local
              file). Defaults to the official index.
   --force    Run update-check even when the schedule says it is not due
+  --apply    Write the proposed settings file (permissions only)
   --help     Show this help message
   --version  Show the CLI version
 `);
 }
 
 function parseArguments(args) {
-  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false };
+  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false, apply: false };
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
@@ -80,6 +87,8 @@ function parseArguments(args) {
       index += 1;
     } else if (argument === '--force') {
       result.force = true;
+    } else if (argument === '--apply') {
+      result.apply = true;
     } else if (argument.startsWith('-')) {
       throw new Error(`Unknown option: ${argument}`);
     } else if (result.command === null) {
@@ -156,6 +165,8 @@ async function loadProjectName(root) {
   }
   return path.basename(root) || 'unnamed-project';
 }
+
+const PERMISSIONS_POINTER = 'Optional: review the Claude Code permission rules Noah Kit proposes: npx --yes github:w-vi-khang/noah-kit permissions\n';
 
 function createManifest(projectName) {
   return {
@@ -301,7 +312,7 @@ async function initializeProject(root) {
   if (!ruleExists) plannedChanges.push(CLAUDE_RULE_PATH);
 
   if (plannedChanges.length === 0) {
-    process.stdout.write(`No changes needed. Existing Noah Kit files were preserved.\nProject: ${manifest.project.name} (${manifest.project.id})\n`);
+    process.stdout.write(`No changes needed. Existing Noah Kit files were preserved.\nProject: ${manifest.project.name} (${manifest.project.id})\n${PERMISSIONS_POINTER}`);
     return;
   }
 
@@ -318,7 +329,18 @@ async function initializeProject(root) {
     throw new Error(`Initialization could not finish while creating ${error.path ?? 'a project file'}. Review the working tree before retrying. Original error: ${error.message}`);
   }
 
-  process.stdout.write(`Initialized Noah Kit project files:\n${plannedChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n`);
+  process.stdout.write(`Initialized Noah Kit project files:\n${plannedChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n${PERMISSIONS_POINTER}`);
+}
+
+async function manageClaudePermissions(root, { apply }) {
+  if (!(await readProjectManifest(root))) {
+    throw new Error(`No ${MANIFEST_PATH} found. Initialize the project first: npx --yes github:w-vi-khang/noah-kit init`);
+  }
+  if (apply) {
+    process.stdout.write((await applyPermissions(root)).text);
+  } else {
+    process.stdout.write(formatPreview(await inspectSettings(root)));
+  }
 }
 
 async function readPackageMetadata() {
@@ -666,8 +688,8 @@ export async function run(args = process.argv.slice(2)) {
     process.stdout.write(`${CLI_VERSION}\n`);
     return 0;
   }
-  if (!['init', 'install', 'status', 'decline', 'onboarding', 'link', 'update-check', 'language'].includes(options.command)) {
-    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding, link, update-check, language.\nUse --help to see usage.\n');
+  if (!['init', 'install', 'status', 'decline', 'onboarding', 'link', 'update-check', 'language', 'permissions'].includes(options.command)) {
+    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding, link, update-check, language, permissions.\nUse --help to see usage.\n');
     return 2;
   }
   const maximumArguments = options.command === 'language' ? 1 : 0;
@@ -677,6 +699,10 @@ export async function run(args = process.argv.slice(2)) {
   }
   if (options.command !== 'update-check' && (options.source !== undefined || options.force)) {
     process.stderr.write('Options --source and --force are only supported by update-check.\n');
+    return 2;
+  }
+  if (options.command !== 'permissions' && options.apply) {
+    process.stderr.write('Option --apply is only supported by permissions.\n');
     return 2;
   }
 
@@ -689,6 +715,8 @@ export async function run(args = process.argv.slice(2)) {
       await declineInstallation(options.cwd);
     } else if (options.command === 'onboarding') {
       await showOnboarding(options.cwd);
+    } else if (options.command === 'permissions') {
+      await manageClaudePermissions(options.cwd, options);
     } else if (options.command === 'language') {
       await configureLanguage(options.arguments[0]);
     } else if (options.command === 'update-check') {
