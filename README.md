@@ -36,6 +36,14 @@ Install the current Core version into user-local storage after reviewing the com
 npx --yes github:w-vi-khang/noah-kit install
 ```
 
+Create user-local launchers after installing Core:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit link
+```
+
+This creates a launcher in the local Noah Kit bin directory. Add that directory to your PATH manually if desired; Noah Kit does not change shell configuration. The launcher dispatches to the newest valid Core installation.
+
 Inspect the local installation and the current project registration:
 
 ```sh
