@@ -7,6 +7,9 @@ const CHECK_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000;
 
 export function resolveUpdatePolicy(updates = {}) {
+  if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+    throw new Error('The manifest updates field must be an object when present.');
+  }
   const checkTime = updates.check_after_local_time ?? DEFAULT_CHECK_TIME;
   const timezone = updates.timezone ?? DEFAULT_TIMEZONE;
   const match = typeof checkTime === 'string' ? checkTime.match(CHECK_TIME_PATTERN) : null;

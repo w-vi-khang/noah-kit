@@ -15,6 +15,11 @@ test('rejects unsupported check times and timezones instead of guessing', () => 
   assert.throws(() => resolveUpdatePolicy({ check_on_startup: 'yes' }), /must be a boolean/);
 });
 
+test('rejects a non-object updates block instead of falling back to defaults', () => {
+  assert.throws(() => resolveUpdatePolicy('yes'), /updates field must be an object/);
+  assert.throws(() => resolveUpdatePolicy([]), /updates field must be an object/);
+});
+
 test('a check is due when no successful check was ever recorded', () => {
   const decision = evaluateUpdateCheck(undefined, utcPolicy, new Date('2026-10-26T09:00:00.000Z'));
   assert.equal(decision.due, true);
