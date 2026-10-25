@@ -1,17 +1,38 @@
 #!/usr/bin/env node
 
 import { randomUUID } from 'node:crypto';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { getNoahHome, loadLocalState, saveLocalState } from './local-state.js';
 
 const CLI_VERSION = '0.1.0';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
 const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
+const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function printHelp() {
-  process.stdout.write(`Noah Kit ${CLI_VERSION}\n\nUsage:\n  noah init [--cwd <path>]\n  noah --version\n  noah --help\n\nCommands:\n  init       Initialize or validate Noah Kit project files\n\nOptions:\n  --cwd      Target project directory (defaults to the current directory)\n  --help     Show this help message\n  --version  Show the CLI version\n`);
+  process.stdout.write(`Noah Kit ${CLI_VERSION}
+
+Usage:
+  noah init [--cwd <path>]
+  noah install [--cwd <path>]
+  noah status [--cwd <path>]
+  noah --version
+  noah --help
+
+Commands:
+  init       Initialize or validate project configuration
+  install    Install the current Core version into user-local storage
+  status     Show local Core installation and current project status
+
+Options:
+  --cwd      Target project directory (defaults to the current directory)
+  --help     Show this help message
+  --version  Show the CLI version
+`);
 }
 
 function parseArguments(args) {
@@ -78,6 +99,20 @@ function validateManifest(manifest) {
   return manifest;
 }
 
+async function readProjectManifest(root) {
+  const manifestPath = path.join(root, MANIFEST_PATH);
+  if (!(await exists(manifestPath))) return null;
+
+  try {
+    return validateManifest(JSON.parse(await readFile(manifestPath, 'utf8')));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`${MANIFEST_PATH} is not valid JSON.`);
+    }
+    throw error;
+  }
+}
+
 async function loadProjectName(root) {
   const packagePath = path.join(root, 'package.json');
   if (await exists(packagePath)) {
@@ -128,7 +163,22 @@ function createManifest(projectName) {
 }
 
 function createClaudeInstructions() {
-  return `# Noah Kit Project Instructions\n\nThis project declares Noah Kit in \`.noah-kit/manifest.json\`. Read that manifest before applying Noah Kit workflows.\n\n## Mandatory rules\n\n- Write all code, identifiers, code comments, tests, configuration keys, and technical documentation in English.\n- Treat \`.noah-kit/manifest.json\` as committed project configuration, not as a place for user-local state or secrets.\n- Do not claim a test or verification passed unless it was actually run and its result was observed.\n- Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.\n- If Noah Kit Core is not installed, explain that Core installation is not available in this release. Do not silently download or execute code.\n\n## Project setup\n\nThe manifest is the source of project-specific Noah Kit settings. Keep reusable kit implementation outside this repository. Store installation choices, caches, logs, and update timestamps in user-local state outside version control.\n`;
+  return `# Noah Kit Project Instructions
+
+This project declares Noah Kit in `.noah-kit/manifest.json`. Read that manifest before applying Noah Kit workflows.
+
+## Mandatory rules
+
+- Write all code, identifiers, code comments, tests, configuration keys, and technical documentation in English.
+- Treat `.noah-kit/manifest.json` as committed project configuration, not as a place for user-local state or secrets.
+- Do not claim a test or verification passed unless it was actually run and its result was observed.
+- Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.
+- If Noah Kit Core is not installed, ask the user to run the documented `noah install` command. Do not silently download or execute code.
+
+## Project setup
+
+The manifest is the source of project-specific Noah Kit settings. Keep reusable kit implementation outside this repository. Store installation choices, caches, logs, and update timestamps in user-local state outside version control.
+`;
 }
 
 async function initializeProject(root) {
@@ -141,14 +191,7 @@ async function initializeProject(root) {
   let ruleContent;
 
   if (manifestExists) {
-    try {
-      manifest = validateManifest(JSON.parse(await readFile(manifestAbsolutePath, 'utf8')));
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error(`${MANIFEST_PATH} is not valid JSON; no files were changed.`);
-      }
-      throw new Error(`${MANIFEST_PATH} is invalid: ${error.message} No files were changed.`);
-    }
+    manifest = await readProjectManifest(root);
   } else {
     manifest = createManifest(await loadProjectName(root));
     manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -183,6 +226,120 @@ async function initializeProject(root) {
   process.stdout.write(`Initialized Noah Kit project files:\n${plannedChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n`);
 }
 
+async function readPackageMetadata() {
+  const packagePath = path.join(PACKAGE_ROOT, 'package.json');
+  const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
+  if (packageJson.name !== 'noah-kit' || packageJson.version !== CLI_VERSION) {
+    throw new Error('The package metadata does not match the running Noah Kit CLI version.');
+  }
+  if (!(await exists(path.join(PACKAGE_ROOT, 'src', 'cli.js')))) {
+    throw new Error('The Core source files are incomplete; installation was not started.');
+  }
+  return packageJson;
+}
+
+async function installCore(root) {
+  const packageJson = await readPackageMetadata();
+  const noahHome = getNoahHome();
+  const versionsDirectory = path.join(noahHome, 'versions');
+  const installDirectory = path.join(versionsDirectory, CLI_VERSION);
+  const markerPath = path.join(installDirectory, 'core-manifest.json');
+  const state = await loadLocalState(noahHome);
+  let installedAt;
+
+  if (await exists(installDirectory)) {
+    if (!(await exists(markerPath))) {
+      throw new Error(`The target directory ${installDirectory} already exists without a valid Noah Kit marker. It was not overwritten.`);
+    }
+    let marker;
+    try {
+      marker = JSON.parse(await readFile(markerPath, 'utf8'));
+    } catch {
+      throw new Error(`The existing Core marker at ${markerPath} is invalid. The installation was not overwritten.`);
+    }
+    if (marker.schema_version !== 1 || marker.package_name !== packageJson.name || marker.version !== CLI_VERSION) {
+      throw new Error(`The existing Core directory ${installDirectory} does not match version ${CLI_VERSION}. It was not overwritten.`);
+    }
+    installedAt = marker.installed_at;
+  } else {
+    await mkdir(versionsDirectory, { recursive: true });
+    const stagingDirectory = path.join(versionsDirectory, `.staging-${CLI_VERSION}-${randomUUID()}`);
+    installedAt = new Date().toISOString();
+
+    try {
+      await mkdir(stagingDirectory, { recursive: false });
+      await cp(path.join(PACKAGE_ROOT, 'src'), path.join(stagingDirectory, 'src'), { recursive: true, errorOnExist: true, force: false });
+      await cp(path.join(PACKAGE_ROOT, 'package.json'), path.join(stagingDirectory, 'package.json'), { errorOnExist: true, force: false });
+      const docsPath = path.join(PACKAGE_ROOT, 'docs');
+      if (await exists(docsPath)) {
+        await cp(docsPath, path.join(stagingDirectory, 'docs'), { recursive: true, errorOnExist: true, force: false });
+      }
+      await writeFile(path.join(stagingDirectory, 'core-manifest.json'), `${JSON.stringify({
+        schema_version: 1,
+        package_name: packageJson.name,
+        version: CLI_VERSION,
+        installed_at: installedAt,
+        source: 'github:w-vi-khang/noah-kit'
+      }, null, 2)}\n`, { flag: 'wx' });
+      await rename(stagingDirectory, installDirectory);
+    } catch (error) {
+      await rm(stagingDirectory, { recursive: true, force: true }).catch(() => {});
+      throw new Error(`Core installation failed before activation. The existing installation was not changed. ${error.message}`);
+    }
+  }
+
+  state.installations[CLI_VERSION] = {
+    version: CLI_VERSION,
+    path: installDirectory,
+    installed_at: installedAt,
+    last_verified_at: new Date().toISOString()
+  };
+
+  const projectManifest = await readProjectManifest(root);
+  if (projectManifest) {
+    const previousProjectState = state.projects[projectManifest.project.id] ?? {};
+    state.projects[projectManifest.project.id] = {
+      ...previousProjectState,
+      name: projectManifest.project.name,
+      root_path: root,
+      installed_version: CLI_VERSION,
+      last_seen_at: new Date().toISOString()
+    };
+  }
+
+  await saveLocalState(noahHome, state);
+  process.stdout.write(`Noah Kit Core ${CLI_VERSION} is installed at:\n  ${installDirectory}\nLocal state:\n  ${path.join(noahHome, 'state.json')}\nNo project files were changed by the Core installer.\n`);
+}
+
+async function showStatus(root) {
+  const noahHome = getNoahHome();
+  const state = await loadLocalState(noahHome);
+  const installedVersions = Object.keys(state.installations).sort();
+  const projectManifest = await readProjectManifest(root);
+
+  process.stdout.write('Noah Kit status\n');
+  if (installedVersions.length === 0) {
+    process.stdout.write('Core: not registered as installed\n');
+  } else {
+    for (const version of installedVersions) {
+      const installation = state.installations[version];
+      const markerPath = path.join(installation.path, 'core-manifest.json');
+      const markerExists = await exists(markerPath);
+      process.stdout.write(`Core ${version}: ${markerExists ? 'installed' : 'missing or incomplete'} (${installation.path})\n`);
+    }
+  }
+
+  if (!projectManifest) {
+    process.stdout.write(`Project: no ${MANIFEST_PATH} found in ${root}\n`);
+    return;
+  }
+
+  const projectState = state.projects[projectManifest.project.id];
+  process.stdout.write(`Project: ${projectManifest.project.name} (${projectManifest.project.id})\n`);
+  process.stdout.write(`Project registration: ${projectState ? 'known locally' : 'not yet registered locally'}\n`);
+  process.stdout.write(`Required Core range: ${projectManifest.kit.core_version_range}\n`);
+}
+
 export async function run(args = process.argv.slice(2)) {
   let options;
   try {
@@ -200,16 +357,22 @@ export async function run(args = process.argv.slice(2)) {
     process.stdout.write(`${CLI_VERSION}\n`);
     return 0;
   }
-  if (options.command !== 'init') {
-    process.stderr.write('A command is required. Supported command: init.\nUse --help to see usage.\n');
+  if (!['init', 'install', 'status'].includes(options.command)) {
+    process.stderr.write('A command is required. Supported commands: init, install, status.\nUse --help to see usage.\n');
     return 2;
   }
 
   try {
-    await initializeProject(options.cwd);
+    if (options.command === 'init') {
+      await initializeProject(options.cwd);
+    } else if (options.command === 'install') {
+      await installCore(options.cwd);
+    } else {
+      await showStatus(options.cwd);
+    }
     return 0;
   } catch (error) {
-    process.stderr.write(`Noah Kit initialization failed: ${error.message}\n`);
+    process.stderr.write(`Noah Kit ${options.command} failed: ${error.message}\n`);
     return 1;
   }
 }
