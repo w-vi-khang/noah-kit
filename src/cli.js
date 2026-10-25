@@ -228,6 +228,36 @@ async function initializeProject(root) {
   process.stdout.write(`Initialized Noah Kit project files:\n${plannedChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n`);
 }
 
+function compareVersions(left, right) {
+  const leftParts = left.split('.').map(Number);
+  const rightParts = right.split('.').map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    if (leftParts[index] > rightParts[index]) return 1;
+    if (leftParts[index] < rightParts[index]) return -1;
+  }
+  return 0;
+}
+
+function isVersionCompatible(version, range) {
+  const terms = range.trim().split(/\\s+/);
+  if (terms.length === 0 || !range.trim()) {
+    throw new Error('The project Core version range is empty.');
+  }
+
+  return terms.every((term) => {
+    const match = term.match(/^(>=|<=|>|<|=)?(\\d+\\.\\d+\\.\\d+)$/);
+    if (!match) {
+      throw new Error(`Unsupported Core version range syntax: "${range}". Use space-separated exact versions or >=, >, <=, < constraints.`);
+    }
+    const operator = match[1] ?? '=';
+    const comparison = compareVersions(version, match[2]);
+    if (operator === '>=') return comparison >= 0;
+    if (operator === '>') return comparison > 0;
+    if (operator === '<=') return comparison <= 0;
+    if (operator === '<') return comparison < 0;
+    return comparison === 0;
+  });
+}
 async function readPackageMetadata() {
   const packagePath = path.join(PACKAGE_ROOT, 'package.json');
   const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
@@ -243,6 +273,9 @@ async function readPackageMetadata() {
 async function installCore(root) {
   const packageJson = await readPackageMetadata();
   const projectManifest = await readProjectManifest(root);
+  if (projectManifest && !isVersionCompatible(CLI_VERSION, projectManifest.kit.core_version_range)) {
+    throw new Error(`Core version ${CLI_VERSION} does not satisfy the project's required range "${projectManifest.kit.core_version_range}". No files were installed or changed.`);
+  }
   const noahHome = getNoahHome();
   const versionsDirectory = path.join(noahHome, 'versions');
   const installDirectory = path.join(versionsDirectory, CLI_VERSION);
