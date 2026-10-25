@@ -19,7 +19,7 @@ test('uses an explicit NOAH_HOME when configured', () => {
 });
 
 test('defaults local state outside the project directory', () => {
-  assert.equal(getNoahHome({}, '/home/test'), path.join('/home/test', '.noah-kit'));
+  assert.equal(getNoahHome({}, '/home/test'), path.resolve(path.join('/home/test', '.noah-kit')));
 });
 
 test('loads an empty state when no state file exists', async () => {
