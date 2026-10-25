@@ -19,6 +19,7 @@ Usage:
   noah init [--cwd <path>]
   noah install [--cwd <path>]
   noah status [--cwd <path>]
+  noah decline [--cwd <path>]
   noah --version
   noah --help
 
@@ -26,6 +27,7 @@ Commands:
   init       Initialize or validate project configuration
   install    Install the current Core version into user-local storage
   status     Show local Core installation and current project status
+  decline    Remember a declined installation choice in user-local state
 
 Options:
   --cwd      Target project directory (defaults to the current directory)
@@ -310,6 +312,33 @@ async function installCore(root) {
   process.stdout.write(`Noah Kit Core ${CLI_VERSION} is installed at:\n  ${installDirectory}\nLocal state:\n  ${path.join(noahHome, 'state.json')}\nNo project files were changed by the Core installer.\n`);
 }
 
+async function declineInstallation(root) {
+  const projectManifest = await readProjectManifest(root);
+  if (!projectManifest) {
+    throw new Error(`No ${MANIFEST_PATH} found. Initialize the project before recording an installation choice.`);
+  }
+
+  const noahHome = getNoahHome();
+  const state = await loadLocalState(noahHome);
+  const now = new Date().toISOString();
+  const previous = state.projects[projectManifest.project.id] ?? {};
+  const remindAfterDays = Number.isInteger(projectManifest.updates?.remind_after_days) && projectManifest.updates.remind_after_days >= 0
+    ? projectManifest.updates.remind_after_days
+    : 1;
+
+  state.projects[projectManifest.project.id] = {
+    ...previous,
+    name: projectManifest.project.name,
+    root_path: root,
+    declined_install_at: now,
+    declined_remind_after_days: remindAfterDays,
+    last_seen_at: now
+  };
+
+  await saveLocalState(noahHome, state);
+  process.stdout.write(`Installation decline recorded in user-local state for ${projectManifest.project.name}.\nNo project files were changed.\nThe reminder interval is ${remindAfterDays} day(s); this command records the preference but does not schedule a background process.\n`);
+}
+
 async function showStatus(root) {
   const noahHome = getNoahHome();
   const state = await loadLocalState(noahHome);
@@ -336,6 +365,10 @@ async function showStatus(root) {
   const projectState = state.projects[projectManifest.project.id];
   process.stdout.write(`Project: ${projectManifest.project.name} (${projectManifest.project.id})\n`);
   process.stdout.write(`Project registration: ${projectState ? 'known locally' : 'not yet registered locally'}\n`);
+  if (projectState?.declined_install_at) {
+    process.stdout.write(`Last declined installation: ${projectState.declined_install_at}\n`);
+    process.stdout.write(`Reminder interval: ${projectState.declined_remind_after_days ?? 1} day(s)\n`);
+  }
   process.stdout.write(`Required Core range: ${projectManifest.kit.core_version_range}\n`);
 }
 
@@ -356,8 +389,8 @@ export async function run(args = process.argv.slice(2)) {
     process.stdout.write(`${CLI_VERSION}\n`);
     return 0;
   }
-  if (!['init', 'install', 'status'].includes(options.command)) {
-    process.stderr.write('A command is required. Supported commands: init, install, status.\nUse --help to see usage.\n');
+  if (!['init', 'install', 'status', 'decline'].includes(options.command)) {
+    process.stderr.write('A command is required. Supported commands: init, install, status, decline.\nUse --help to see usage.\n');
     return 2;
   }
 
@@ -366,6 +399,8 @@ export async function run(args = process.argv.slice(2)) {
       await initializeProject(options.cwd);
     } else if (options.command === 'install') {
       await installCore(options.cwd);
+    } else if (options.command === 'decline') {
+      await declineInstallation(options.cwd);
     } else {
       await showStatus(options.cwd);
     }
