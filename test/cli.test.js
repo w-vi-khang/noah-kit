@@ -96,7 +96,7 @@ test('rejects unsupported commands without modifying the project', async () => {
     const result = runCli(root, 'update');
 
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /Supported commands: init, install, status, decline, onboarding, link/);
+    assert.match(result.stderr, /Supported commands: init, install, status, decline, onboarding, link, update-check/);
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
@@ -248,6 +248,8 @@ test('onboarding reports when the current directory is not a Noah Kit project', 
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /NO_KIT_PROJECT/);
+    assert.match(result.stdout, /\n$/);
+    assert.doesNotMatch(result.stdout, /\\n/);
   });
 });
 
@@ -297,6 +299,7 @@ test('onboarding recognizes an installed compatible Core', async () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /CORE_READY/);
+    assert.match(result.stdout, /\n$/);
   });
 });
 
