@@ -42,14 +42,18 @@ File counts exclude test files. Files in different top-level directories (for ex
 
 ## Model and effort
 
-Subagent definitions do not fix a model or effort. For every subagent request, the main agent MUST set `model` explicitly, MUST set `effort` explicitly when the Agent tool accepts it, and MUST state both choices and a one-line reason in the request. Choose from this guide; when two rows match, use the stronger row. Order: `haiku` < `sonnet` < `opus`; `low` < `medium` < `high` < `xhigh` < `max`.
+Subagent definitions do not fix a model or effort. For every subagent request, the main agent MUST set `model` explicitly, MUST set `effort` explicitly when the Agent tool accepts it, and MUST state both choices and a one-line reason in the request. Use the first row that matches the request's tier and stage.
 
-| Task | Model | Effort |
+| Request | Model | Effort |
 | --- | --- | --- |
-| Mechanical work with an exact specification: run listed checks and report output, apply fully specified edits | `haiku`; `sonnet` if the output must be interpreted | `low`; `medium` if the output must be interpreted |
-| Implement or test from an approved plan; T2 review; T3 verification | `sonnet` | `high` |
-| Plan an area not yet understood; T3 review; security-relevant change; root cause still unknown | `opus` | `high` |
-| A previous attempt at the same task failed review or verification | One step stronger than that attempt, staying at `opus` if already there | One step higher than that attempt, staying at `max` if already there |
+| T0-T2, and the request only runs listed checks and reports their output, or applies fully specified edits | `haiku` | `low` |
+| T3 plan or review | `opus` | `high` |
+| T3 implement, test, or verify | `sonnet` | `high` |
+| T2 plan or review | `sonnet` | `high` |
+| T2 implement or test | `sonnet` | `medium` |
+| Any other request | `sonnet` | `high` |
+
+If a previous attempt at the same request failed review or verification, MUST raise the model one step and the effort one step from that attempt, and MUST stay at the highest value when already there. Order: `haiku` < `sonnet` < `opus`; `low` < `medium` < `high` < `xhigh` < `max`.
 
 ## Bounds
 

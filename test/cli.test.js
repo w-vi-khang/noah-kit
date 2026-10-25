@@ -506,3 +506,19 @@ test('runs when invoked through a symlinked directory', async (t) => {
     assert.equal(result.stdout.trim(), CORE_VERSION);
   });
 });
+
+test('runs through a file symlink to the entry, as an npm bin link does', async (t) => {
+  if (process.platform === 'win32') {
+    t.skip('File symlinks need elevated rights on Windows.');
+    return;
+  }
+  await withTemporaryProject(async (root) => {
+    const binLink = path.join(root, 'noah');
+    await symlink(cliPath, binLink, 'file');
+
+    const result = spawnSync(binLink, ['--version'], { encoding: 'utf8' });
+
+    assert.equal(result.status, 0, result.stderr || String(result.error));
+    assert.equal(result.stdout.trim(), CORE_VERSION);
+  });
+});

@@ -15,11 +15,13 @@ Spend process in proportion to risk. A small task must not pay for planning, rev
 | --- | --- | --- |
 | Plan | `planner` | No |
 | Implement | `implementer` | Owned files only |
-| Test | `test-engineer` | Test files only. Rationale: a separate test author is less likely to write tests shaped to the implementation. |
+| Test | `test-engineer` | Test files only |
 | Review | `reviewer` | No |
 | Verify | `verifier` | No |
 
-Subagent definitions do not fix a model or effort. The same role needs different capability on different tasks: a reviewer of a typo fix and a reviewer of an update transaction should not cost the same. The MA chooses both for each request from the guide in `.claude/rules/main-agent.md`. Per-request `model` is documented (https://code.claude.com/docs/en/sub-agents, model resolution order); per-request `effort` is a parameter of the Agent tool in the Claude Code version used to write this document, but the documentation pages read so far do not describe it. If the MA omits `model`, Claude Code falls back to the main conversation's model.
+Rationale for a separate test author: it is less likely to write tests shaped to the implementation.
+
+Subagent definitions do not fix a model or effort. The same role needs different capability on different tasks: a reviewer of a typo fix and a reviewer of an update transaction should not cost the same. The MA chooses both for each request from the guide in `.claude/rules/main-agent.md`. Per-request `model` is documented (https://code.claude.com/docs/en/sub-agents, model resolution order); per-request `effort` is a parameter of the Agent tool in the Claude Code version used to write this document, but the documentation pages read so far do not describe it. If the MA omits `model`, Claude Code uses the agent definition's model (none is set here), then `CLAUDE_CODE_SUBAGENT_MODEL` when set, then the main conversation's model. What effort applies when the MA omits it is not documented in the pages read.
 
 ## Default model for the main agent
 
@@ -76,8 +78,7 @@ This repository is also a plugin marketplace:
 
 - `.claude-plugin/marketplace.json` lists one plugin, `noah-kit`, whose source is the repository root (`./`). The root is used because a plugin installed from a git-hosted marketplace is copied into the cache without files outside its directory, and `bin/noah` needs `src/`. A marketplace added from a local path loads the plugin in place instead, without copying or version pinning. `test/plugin.test.js` runs `bin/noah` from a copy of the committed files only.
 - `.claude-plugin/plugin.json` sets the version, which `test/plugin.test.js` requires to equal `package.json`, and lists the agents in `.claude/agents/`, so the plugin has no second copy of them.
-- `src/main.js` is the only command-line entry: package.json `bin`, `bin/noah`, and the tests run it. Running `node src/cli.js` directly does nothing, because `src/cli.js` is a module. Use `node src/main.js` during development.
-- `bin/noah` runs the entry adapter `src/main.js`, which imports `run()` from `src/cli.js`. `src/cli.js` has no side effects on import, so the CLI does not depend on how its path was reached (symlinks, npm bin links, or the plugin cache). Claude Code puts a plugin's `bin/` on the Bash tool's `PATH` after the user's own entries, so a `noah` already on the user's `PATH` (such as the launcher from `noah link`, if the user added it to `PATH`) takes precedence and may run a different Core version. `noah --version` shows which version runs. `bin/noah` is a POSIX shell script; there is no Windows `.cmd` equivalent, so Claude's PowerShell tool cannot run it.
+- `bin/noah` runs the entry adapter `src/main.js`, which imports `run()` from `src/cli.js`. `src/cli.js` has no side effects on import, so the CLI does not depend on how its path was reached (symlinks, npm bin links, or the plugin cache). See `CONTRIBUTING.md` for running a checkout. Claude Code puts a plugin's `bin/` on the Bash tool's `PATH` after the user's own entries, so a `noah` already on the user's `PATH` (such as the launcher from `noah link`, if the user added it to `PATH`) takes precedence and may run a different Core version. `noah --version` shows which version runs. `bin/noah` is a POSIX shell script; there is no Windows `.cmd` equivalent, so Claude's PowerShell tool cannot run it.
 - The plugin root contains `package.json` without a lockfile, so Claude Code installs no dependencies when it caches the plugin. Adding a lockfile would make Claude Code run a dependency install at cache time.
 
 The shipped agents are written for this repository: their descriptions refer to the T0-T3 tiers in `.claude/rules/main-agent.md`, and `reviewer` checks Noah Kit's own safety rules. The plugin does not ship that rule, so in another project the agents lack that context until the project layer exists.
