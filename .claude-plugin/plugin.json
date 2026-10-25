@@ -14,10 +14,6 @@
     "./.claude/agents/reviewer.md",
     "./.claude/agents/verifier.md"
   ],
-  "skills": [
-    "./skills/"
-  ],
-  "hooks": {
-    "hooks": "./hooks/hooks.json"
-  }
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
 }
