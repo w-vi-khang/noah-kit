@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -36,6 +36,19 @@ function validateState(state) {
   if (!state.projects || typeof state.projects !== 'object' || Array.isArray(state.projects)) {
     throw new Error('Local state projects must be an object.');
   }
+  for (const [version, installation] of Object.entries(state.installations)) {
+    if (!/^\\d+\\.\\d+\\.\\d+$/.test(version) || !installation || typeof installation !== 'object' || Array.isArray(installation)) {
+      throw new Error('Local state contains an invalid Core installation entry.');
+    }
+    if (installation.version !== version || typeof installation.path !== 'string' || !installation.path.trim()) {
+      throw new Error(`Local state installation ${version} must contain a matching version and a non-empty path.`);
+    }
+  }
+  for (const [projectId, project] of Object.entries(state.projects)) {
+    if (!projectId.trim() || !project || typeof project !== 'object' || Array.isArray(project)) {
+      throw new Error('Local state contains an invalid project entry.');
+    }
+  }
   return state;
 }
 
@@ -68,7 +81,7 @@ export async function saveLocalState(noahHome, state) {
     await rename(temporaryPath, statePath);
   } catch (error) {
     try {
-      await import('node:fs/promises').then(({ rm }) => rm(temporaryPath, { force: true }));
+      await rm(temporaryPath, { force: true });
     } catch {
       // Preserve the original write error.
     }
