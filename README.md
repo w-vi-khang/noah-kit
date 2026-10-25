@@ -42,6 +42,14 @@ Inspect the local installation and the current project registration:
 npx --yes github:w-vi-khang/noah-kit status
 ```
 
+Check the onboarding decision without installing anything:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit onboarding
+```
+
+The command reports one of `NO_KIT_PROJECT`, `CORE_READY`, `INSTALL_DECLINED`, `PROMPT_INSTALL`, or `NO_COMPATIBLE_RELEASE`. It does not install Core or run a background scheduler.
+
 If you decline installation for a project, record that decision locally:
 
 ```sh
