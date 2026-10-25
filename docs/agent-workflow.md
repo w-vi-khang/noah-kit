@@ -59,8 +59,8 @@ These are instructions to the model, not enforced controls:
 
 - Tier choice, stage selection, and briefs depend on the MA following `.claude/rules/main-agent.md`. Nothing blocks a skipped stage.
 - Read-only agents have Bash, so they could still modify files. Their instructions forbid it, but nothing enforces it.
-- Hooks could later enforce a verification gate or block subagent commits, once a hook safety contract exists.
-- No skills exist yet. The MA rule allows using skills once they are defined.
+- The plugin now registers a Stop hook that reminds the main agent to inspect a dirty working tree and report verification evidence. It is a reminder, not a test runner or correctness guarantee; it fails open on malformed input, Git errors, or repeated stop events. Subagent commit prevention is still instruction-based.
+- Three plugin skills now cover workflow orchestration, failure diagnosis, and efficient verification. Their activation remains model-driven; structural tests verify that the files are registered, not that a model follows them.
 - The structural test (`test/agents.test.js`) checks agent fields, that no agent fixes a model or effort, tool boundaries, and that the rule names every agent. It does not test how the model behaves in a real session.
 
 ## Distribution to other projects
