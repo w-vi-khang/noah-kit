@@ -29,9 +29,11 @@ Acceptance criteria:
 - [x] Detect project configuration through `noah status` and validate it before installation.
 - [ ] Offer an interactive install/skip choice on project startup.
 - [x] Persist explicit declined-install choices only in local state, keyed by stable project identity.
-- [ ] Evaluate the reminder interval and suppress prompts until it is due.
+- [x] Evaluate the reminder interval and suppress prompts until it is due in the `noah onboarding` decision command.
 - [x] Test local decline persistence and ensure the committed manifest remains unchanged.
-- [ ] Test the complete clone-to-onboarding flow inside Claude Code.
+- [x] Test onboarding decision states, including missing manifest, compatible Core, recent decline, expired reminder, and incompatible Core range.
+- [ ] Test the complete clone-to-onboarding flow inside a real Claude Code session.
+- [ ] Add a deterministic Claude Code lifecycle hook for onboarding; current rule-based prompting is instruction-driven, not an enforcement guarantee.
 
 ## Milestone 3: Versioned Core and safe updates
 
@@ -54,7 +56,7 @@ Acceptance criteria:
 
 ## Milestone 5: Claude Code workflow integration
 
-- [ ] Add concise project entry instructions and built-in mandatory rules.
+- [x] Add concise project entry instructions and built-in mandatory rules.
 - [ ] Add risk-based task modes rather than always spawning multiple agents.
 - [ ] Give subagents explicit task IDs, file ownership, acceptance criteria, and handoff contracts.
 - [ ] Add verification evidence and a final review gate.
