@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -51,4 +52,31 @@ test('bin/noah is an LF-terminated executable that runs the bundled CLI', (t) =>
   const result = spawnSync(launcherPath, ['--version'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), packageJson.version);
+});
+
+test('bin/noah runs from a copy of the git-tracked files only, with git-recorded modes', (t) => {
+  if (process.platform === 'win32') {
+    t.skip('POSIX launcher execution is not tested on Windows.');
+    return;
+  }
+  // A git-hosted marketplace installs the plugin from a clone, so untracked
+  // files and on-disk modes that git did not record are not available there.
+  const listing = spawnSync('git', ['ls-files', '-s', '-z'], { cwd: repositoryRoot, encoding: 'utf8' });
+  assert.equal(listing.status, 0, listing.stderr);
+  const copyRoot = mkdtempSync(path.join(os.tmpdir(), 'noah-plugin-copy-'));
+  try {
+    for (const entry of listing.stdout.split('\0').filter(Boolean)) {
+      const [metadata, relativePath] = entry.split('\t');
+      const mode = metadata.split(' ')[0];
+      const target = path.join(copyRoot, relativePath);
+      mkdirSync(path.dirname(target), { recursive: true });
+      copyFileSync(path.join(repositoryRoot, relativePath), target);
+      chmodSync(target, mode === '100755' ? 0o755 : 0o644);
+    }
+    const result = spawnSync(path.join(copyRoot, 'bin', 'noah'), ['--version'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr || String(result.error));
+    assert.equal(result.stdout.trim(), packageJson.version);
+  } finally {
+    rmSync(copyRoot, { recursive: true, force: true });
+  }
 });

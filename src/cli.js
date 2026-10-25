@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { randomUUID } from 'node:crypto';
+import { realpathSync } from 'node:fs';
 import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { getNoahHome, loadLocalState, saveLocalState } from './local-state.js';
 import { createLaunchers } from './launcher.js';
 import { describeLanguage, normalizeLanguageTag } from './preferences.js';
@@ -658,7 +659,19 @@ export async function run(args = process.argv.slice(2)) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+// Compare real paths: Node resolves symlinks for import.meta.url but not for
+// argv, so a symlinked directory (such as /var on macOS) would otherwise make
+// the CLI exit silently without running.
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   run().then((exitCode) => {
     process.exitCode = exitCode;
   }).catch((error) => {

@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -480,5 +480,21 @@ test('installs a new Core version beside an existing older one and dispatches to
     });
     assert.equal(dispatched.status, 0, dispatched.stderr);
     assert.equal(dispatched.stdout.trim(), CORE_VERSION);
+  });
+});
+
+test('runs when invoked through a symlinked directory', async (t) => {
+  if (process.platform === 'win32') {
+    t.skip('Directory symlinks need elevated rights on Windows.');
+    return;
+  }
+  await withTemporaryProject(async (root) => {
+    const linkedSource = path.join(root, 'linked-src');
+    await symlink(path.dirname(cliPath), linkedSource, 'dir');
+
+    const result = spawnSync(process.execPath, [path.join(linkedSource, 'cli.js'), '--version'], { encoding: 'utf8' });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), CORE_VERSION);
   });
 });

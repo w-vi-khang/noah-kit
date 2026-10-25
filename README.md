@@ -87,7 +87,7 @@ claude plugin marketplace add /path/to/noah-kit
 claude plugin install noah-kit@noah-kit
 ```
 
-The plugin provides the five workflow subagents as `noah-kit:<name>` and puts `noah` on the `PATH` of Claude's Bash tool (POSIX shells only). Loading it in a live session has not been verified yet.
+The plugin provides the five workflow subagents as `noah-kit:<name>` and puts `noah` on the `PATH` of Claude's Bash tool (POSIX shells only). A `noah` already on your `PATH` takes precedence; check with `noah --version`. The subagents refer to the main-agent tiers in `.claude/rules/main-agent.md`, which the plugin does not ship yet, so they are intended for this repository for now. Loading the plugin in a live session has not been verified yet.
 
 Check whether a newer compatible Core release has been published:
 
