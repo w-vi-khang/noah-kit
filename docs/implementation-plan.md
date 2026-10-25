@@ -9,13 +9,13 @@
 
 ## Milestone 1: Minimal working initialization
 
-- [ ] Choose and document a supported runtime and minimum version.
-- [ ] Implement a cross-platform `noah init` entry point.
-- [ ] Validate manifest structure and stable project identity.
-- [ ] Generate only minimal Claude Code adapter files.
-- [ ] Make initialization idempotent and detect conflicts without overwriting user changes.
-- [ ] Add automated tests for fresh initialization, repeated initialization, and conflicting files.
-- [ ] Add a CI workflow that runs the test suite on supported operating systems.
+- [x] Choose and document a supported runtime and minimum version (Node.js 20+).
+- [x] Implement a cross-platform `noah init` entry point.
+- [x] Validate manifest structure and stable project identity.
+- [x] Generate only minimal Claude Code adapter files.
+- [x] Make initialization idempotent and preserve existing files without overwriting user changes.
+- [x] Add automated tests for fresh initialization, repeated initialization, invalid manifests, and existing user files.
+- [x] Add a CI workflow that runs tests on Windows, macOS, and Linux with Node.js 20 and 22.
 
 Acceptance criteria:
 
@@ -26,20 +26,23 @@ Acceptance criteria:
 
 ## Milestone 2: Clone onboarding
 
-- [ ] Detect a project declaring Noah Kit when local Core is absent.
-- [ ] Offer install/skip choices through a clear CLI flow.
-- [ ] Persist skip decisions only in local state, keyed by stable project identity.
-- [ ] Define when a declined installation may be prompted again.
-- [ ] Test cloned project onboarding and local-state isolation.
+- [x] Detect project configuration through `noah status` and validate it before installation.
+- [ ] Offer an interactive install/skip choice on project startup.
+- [x] Persist explicit declined-install choices only in local state, keyed by stable project identity.
+- [ ] Evaluate the reminder interval and suppress prompts until it is due.
+- [x] Test local decline persistence and ensure the committed manifest remains unchanged.
+- [ ] Test the complete clone-to-onboarding flow inside Claude Code.
 
 ## Milestone 3: Versioned Core and safe updates
 
-- [ ] Add versioned Core installation and explicit update commands.
-- [ ] Pin or constrain compatible Core versions in project configuration.
+- [x] Add versioned Core installation into user-local storage.
+- [ ] Add an explicit update command and release selection policy.
+- [x] Constrain compatible Core versions in project configuration and fail closed on unsupported range syntax.
 - [ ] Verify downloaded release metadata and integrity before activation.
-- [ ] Protect dirty project files and preserve local customizations.
+- [x] Ensure the initial Core installer does not modify project files or overwrite an unmarked existing Core directory.
 - [ ] Record update checks, successful updates, and failures in local state.
-- [ ] Add staged activation, backup, recovery, and rollback tests.
+- [x] Stage initial installation in a temporary directory before activation.
+- [ ] Add staged update activation, backup, recovery, and rollback tests.
 
 ## Milestone 4: Migration framework
 
