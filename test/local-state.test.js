@@ -38,6 +38,7 @@ test('saves and reloads local state without losing entries', async () => {
     const state = await loadLocalState(root);
     state.installations['0.1.0'] = {
       version: '0.1.0',
+      path: '/tmp/noah-kit/versions/0.1.0',
       installed_at: '2026-10-26T00:00:00.000Z'
     };
     state.projects['sample-project'] = {
@@ -69,5 +70,20 @@ test('rejects an unsupported state schema', async () => {
     }));
 
     await assert.rejects(loadLocalState(root), /Unsupported local state schema/);
+  });
+});
+
+
+test('rejects malformed installation records rather than trusting their paths', async () => {
+  await withTemporaryHome(async (root) => {
+    await writeFile(getStatePath(root), JSON.stringify({
+      schema_version: 1,
+      installations: {
+        latest: { version: 'latest', path: '/tmp/noah-kit' }
+      },
+      projects: {}
+    }));
+
+    await assert.rejects(loadLocalState(root), /invalid Core installation entry/);
   });
 });
