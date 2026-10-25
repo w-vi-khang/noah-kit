@@ -30,6 +30,20 @@ npx --yes github:w-vi-khang/noah-kit init --cwd ../my-project
 
 The command creates `.noah-kit/manifest.json` and `.claude/rules/noah-kit.md` only when they are missing. The dedicated rule lets Claude Code discover Noah Kit without replacing a project's existing `CLAUDE.md`. The command preserves existing files and rejects an invalid existing manifest. Review the generated files and commit them to the project repository.
 
+Install the current Core version into user-local storage after reviewing the command:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit install
+```
+
+Inspect the local installation and the current project registration:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit status
+```
+
+The default local data directory is `~/.noah-kit/` (with the home-directory equivalent on Windows). It stores versioned Core files and `state.json`; it is not part of the project repository. Set `NOAH_HOME` only when you intentionally want to use a different local data directory. The installer copies a fixed set of files and does not run package lifecycle scripts or project migrations.
+
 **Current limitation:** this first milestone provides the initializer, not the persistent Core installer or update engine. It does not yet install Core skills, manage local state, check releases, or run migrations. Those features will be added only with explicit safety and recovery behavior.
 
 ## Initial implementation scope
