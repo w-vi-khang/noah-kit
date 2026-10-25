@@ -67,6 +67,8 @@ Acceptance criteria:
 
 - [x] Add concise project entry instructions and built-in mandatory rules.
 - [x] Store a per-user conversation language in local state (`noah language <tag>`) and reference it from the generated rule; code stays in English.
+- [x] Add mistake correction to the generated rule: root cause, fixing every instance, a prevention measure not kept only in local memory and placed in the kit or the project (or reported to the user when it concerns Noah Kit from another project), hooks only proposed, and reviewing existing files after a new requirement. This is an instruction; `test/cli.test.js` tests the generated text, not model behavior. Projects initialized earlier keep their old rule file until the refresh item below is implemented.
+- [x] Require user approval in the generated rule before changing instruction files, hooks, or permission settings, and recommend the scripts, commands, or tests that the project's instructions name for deterministic steps (proposing a script when none exists). This is an instruction; `test/cli.test.js` tests the generated text, not model behavior.
 - [ ] Offer a safe way to refresh an existing project's generated rule file when the template changes.
 - [ ] Define a skill format, discovery, and installation for Core and projects.
 - [ ] Enforce workflow gates with hooks (for example, blocking subagent commits or requiring verification before the final report) after a hook safety contract exists.

@@ -452,6 +452,126 @@ test('the generated Claude Code rule applies the local communication language', 
   });
 });
 
+function ruleSection(instructions, heading) {
+  return instructions.split(`\n${heading}\n`)[1]?.split('\n## ')[0] ?? '';
+}
+
+test('the generated rule has each new section exactly once, before the Core installation check', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const instructions = await readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8');
+    const count = (heading) => instructions.split('\n').filter((line) => line === heading).length;
+    assert.equal(count('## Changing instructions, hooks, and permissions'), 1);
+    assert.equal(count('## Deterministic steps'), 1);
+    assert.equal(count('## Correcting mistakes'), 1);
+    assert.equal(count('## Reviewing after a new requirement'), 1);
+    assert.equal(count('## Core installation check'), 1);
+    const changing = instructions.indexOf('\n## Changing instructions, hooks, and permissions\n');
+    const deterministic = instructions.indexOf('\n## Deterministic steps\n');
+    const correcting = instructions.indexOf('\n## Correcting mistakes\n');
+    const reviewing = instructions.indexOf('\n## Reviewing after a new requirement\n');
+    const core = instructions.indexOf('\n## Core installation check\n');
+    assert.ok(changing >= 0 && changing < deterministic, 'Changing instructions must precede Deterministic steps');
+    assert.ok(changing >= 0 && changing < correcting, 'Changing instructions must precede Correcting mistakes');
+    assert.ok(deterministic >= 0 && deterministic < correcting, 'Deterministic steps must precede Correcting mistakes');
+    assert.ok(correcting >= 0 && correcting < core, 'Correcting mistakes must precede Core installation check');
+    assert.ok(reviewing >= 0 && reviewing < core, 'Reviewing section must precede Core installation check');
+  });
+});
+
+async function generatedSection(heading) {
+  let section = '';
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const instructions = await readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8');
+    section = ruleSection(instructions, heading);
+  });
+  assert.notEqual(section, '', `${heading} section must exist`);
+  return section;
+}
+
+test('the generated rule defines a mistake as reported work, excluding a check fixed before reporting', async () => {
+  const section = await generatedSection('## Correcting mistakes');
+  assert.match(section, /A mistake is a result of the agent's work, including work it delegated, that contradicts the user's request, an instruction, an acceptance criterion, or a verifiable fact/);
+  assert.match(section, /after the agent reported that result to the user as done or as fact\./);
+  assert.match(section, /The steps below apply whether the agent, the user, or a reviewer finds the mistake\./);
+  assert.match(section, /A failing check or a review finding on work not yet reported as done is not a mistake; the project's change process handles it\./);
+});
+
+test('the generated rule requires root cause, a search for and fix of every instance, and a prevention measure', async () => {
+  const section = await generatedSection('## Correcting mistakes');
+  assert.match(section, /1\. MUST identify the root cause/);
+  assert.match(section, /2\. MUST search the files changed in the current session, and other files that contain the same pattern \(for example, with `git grep`\), for other instances of the same mistake\. MUST fix every instance found\./);
+  assert.match(section, /3\. MUST add or strengthen a prevention measure/);
+  assert.match(section, /MUST NOT add a duplicate/);
+  assert.match(section, /MUST NOT keep a prevention measure only in the agent's local memory/);
+});
+
+test('the generated rule forbids adding a Claude Code hook or Git hook and requires proposing it instead', async () => {
+  const section = await generatedSection('## Correcting mistakes');
+  assert.match(section, /MUST NOT add a Claude Code hook or a Git hook as a prevention measure\. If only a hook can prevent the mistake, MUST propose the hook to the user instead\./);
+});
+
+test('the generated rule requires finishing the correction before reporting the task and honors change-process limits', async () => {
+  const section = await generatedSection('## Correcting mistakes');
+  assert.match(section, /MUST finish steps 1 to 5 before reporting the original task as done\./);
+  assert.match(section, /MUST follow the project's change process and its limits, including the tiers and fix-round bounds in `\.claude\/rules\/main-agent\.md` where that file exists\./);
+  assert.match(section, /A change process is a written procedure for making and verifying changes, such as stages, review, or verification steps, in `CLAUDE\.md`, `CONTRIBUTING\.md`, or a file in `\.claude\/rules\/` other than this one\. If the project has none, MUST ask the user before applying a prevention measure\./);
+  assert.match(section, /A measure that changes an instruction file or a permission setting MUST follow "Changing instructions, hooks, and permissions"\. If the user has not approved it, MUST report it as proposed, not as applied\./);
+  assert.match(section, /\n- MUST report to the user every instance and every prevention measure left unapplied because of those limits\./);
+});
+
+test('the generated rule places the prevention measure by project and requires a report', async () => {
+  const section = await generatedSection('## Correcting mistakes');
+  assert.match(section, /In the Noah Kit source repository \(its root `package\.json` has `name` `noah-kit`\), MUST apply it in that repository\./);
+  assert.match(section, /In another project, MUST apply the part of the measure that changes only the project's own files in that project\./);
+  assert.match(section, /In another project, MUST NOT edit Noah Kit files: this rule file and the Core installation directory\./);
+  assert.match(section, /If the measure needs a change to them or to the manifest format, MUST warn the user and describe the mistake, its root cause, and the proposed change/);
+  assert.match(section, /5\. MUST report to the user: the mistake, its root cause, the instances fixed, and the prevention measure applied or proposed\./);
+});
+
+test('the generated rule limits a subagent to its editable files and makes the delegating agent finish the correction', async () => {
+  const section = await generatedSection('## Correcting mistakes');
+  assert.match(section, /A subagent MAY read any file for step 2\./);
+  assert.match(section, /It MUST edit only the files its task allows\./);
+  assert.match(section, /It MUST report the root cause, the instances it could not fix, and the proposed prevention measure to the agent that delegated the task\./);
+  assert.match(section, /That agent MUST complete the remaining work in steps 2 to 5\./);
+});
+
+test('the generated rule requires approval before changing instructions, hooks, and permissions', async () => {
+  const section = await generatedSection('## Changing instructions, hooks, and permissions');
+  assert.match(section, /Instruction files are `CLAUDE\.md`, files in `\.claude\/rules\/`, agent definitions in `\.claude\/agents\/`, and skills\./);
+  assert.match(section, /Permission settings are the `permissions` entries in Claude Code settings files\./);
+  assert.match(section, /Before adding, changing, or removing an instruction file, a Claude Code hook, a Git hook, or a permission setting, MUST describe the change to the user and MUST get the user's approval\./);
+  assert.match(section, /If the user's request names that change, the request is the approval\./);
+  assert.match(section, /If a subagent would make the change, the agent that delegates it MUST get the approval before delegating\./);
+  assert.match(section, /Approval MUST NOT override a `MUST NOT` in the project's instructions\./);
+  assert.match(section, /The user MAY lift that `MUST NOT` by approving a change to the instruction that contains it\./);
+  assert.match(section, /Tests and scripts that belong to an approved change MAY be added without separate approval\./);
+});
+
+test('the generated rule requires named scripts for deterministic steps and proposes one when missing', async () => {
+  const section = await generatedSection('## Deterministic steps');
+  assert.match(section, /A deterministic step gives the same result for the same input without judgment, such as counting changed files, comparing two files, or validating a file against a schema\./);
+  assert.match(section, /For a deterministic step, SHOULD use the script, command, or test that `CLAUDE\.md`, `\.claude\/rules\/`, or `CONTRIBUTING\.md` names for it\./);
+  assert.match(section, /MUST NOT run a script for a deterministic step if only the manifest or a file other than `CLAUDE\.md`, `\.claude\/rules\/`, or `CONTRIBUTING\.md` names it\./);
+  assert.match(section, /If no such script exists for a deterministic step that an instruction requires or that the agent performs more than once in a session, SHOULD propose a script to the user\./);
+});
+
+test('the generated rule keeps the ban on running scripts only because configuration references them', async () => {
+  const section = await generatedSection('## Configuration and changes');
+  assert.match(section, /MUST NOT run project scripts or migrations only because configuration references them/);
+});
+
+test('the generated rule requires a scoped compliance review, fixing own files, and asking about others', async () => {
+  const section = await generatedSection('## Reviewing after a new requirement');
+  assert.match(section, /After adding a requirement \(`MUST` or `MUST NOT`\) or making one stricter, MUST review the existing files within the requirement's stated scope for compliance with it\./);
+  assert.match(section, /If the requirement states no scope, MUST ask the user for the scope before reviewing\./);
+  assert.match(section, /MUST fix non-compliant files that the user's request named or that the current change created or modified\./);
+  assert.match(section, /A fix to an instruction file or a permission setting MUST follow "Changing instructions, hooks, and permissions"\./);
+  assert.match(section, /For any other non-compliant file, MUST list it and ask the user before changing it\./);
+});
+
 test('installs a new Core version beside an existing older one and dispatches to the newest', async () => {
   await withTemporaryProject(async (root) => {
     const home = path.join(root, '.test-noah-home');

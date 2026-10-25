@@ -15,6 +15,54 @@ Scope: every Claude Code session in a project that contains `.noah-kit/manifest.
 - MUST NOT run project scripts or migrations only because configuration references them.
 - MUST NOT report a test or verification as passed unless it ran and its result was observed.
 
+## Changing instructions, hooks, and permissions
+
+Instruction files are `CLAUDE.md`, files in `.claude/rules/`, agent definitions in `.claude/agents/`, and skills. Permission settings are the `permissions` entries in Claude Code settings files.
+
+- Before adding, changing, or removing an instruction file, a Claude Code hook, a Git hook, or a permission setting, MUST describe the change to the user and MUST get the user's approval.
+- If the user's request names that change, the request is the approval.
+- If a subagent would make the change, the agent that delegates it MUST get the approval before delegating.
+- Approval MUST NOT override a `MUST NOT` in the project's instructions. The user MAY lift that `MUST NOT` by approving a change to the instruction that contains it.
+- Tests and scripts that belong to an approved change MAY be added without separate approval.
+
+## Deterministic steps
+
+A deterministic step gives the same result for the same input without judgment, such as counting changed files, comparing two files, or validating a file against a schema.
+
+- For a deterministic step, SHOULD use the script, command, or test that `CLAUDE.md`, `.claude/rules/`, or `CONTRIBUTING.md` names for it.
+- MUST NOT run a script for a deterministic step if only the manifest or a file other than `CLAUDE.md`, `.claude/rules/`, or `CONTRIBUTING.md` names it.
+- If no such script exists for a deterministic step that an instruction requires or that the agent performs more than once in a session, SHOULD propose a script to the user.
+
+## Correcting mistakes
+
+A mistake is a result of the agent's work, including work it delegated, that contradicts the user's request, an instruction, an acceptance criterion, or a verifiable fact, after the agent reported that result to the user as done or as fact. The steps below apply whether the agent, the user, or a reviewer finds the mistake. A failing check or a review finding on work not yet reported as done is not a mistake; the project's change process handles it.
+
+When a mistake is detected:
+
+1. MUST identify the root cause: the missing, unclear, or ignored instruction, or the missing check, that allowed the mistake.
+2. MUST search the files changed in the current session, and other files that contain the same pattern (for example, with `git grep`), for other instances of the same mistake. MUST fix every instance found.
+3. MUST add or strengthen a prevention measure: an instruction, a test, or another executable check that would have prevented or detected the mistake.
+   - If an existing instruction already requires the correct behavior, MUST NOT add a duplicate. MUST make that instruction more explicit or add a check that detects the violation.
+   - MUST NOT keep a prevention measure only in the agent's local memory.
+   - MUST NOT add a Claude Code hook or a Git hook as a prevention measure. If only a hook can prevent the mistake, MUST propose the hook to the user instead.
+   - A measure that changes an instruction file or a permission setting MUST follow "Changing instructions, hooks, and permissions". If the user has not approved it, MUST report it as proposed, not as applied.
+4. MUST apply the prevention measure according to where the work happens:
+   - In the Noah Kit source repository (its root `package.json` has `name` `noah-kit`), MUST apply it in that repository.
+   - In another project, MUST apply the part of the measure that changes only the project's own files in that project.
+   - In another project, MUST NOT edit Noah Kit files: this rule file and the Core installation directory. If the measure needs a change to them or to the manifest format, MUST warn the user and describe the mistake, its root cause, and the proposed change, so that the user can report it to the Noah Kit maintainers.
+5. MUST report to the user: the mistake, its root cause, the instances fixed, and the prevention measure applied or proposed.
+
+- MUST finish steps 1 to 5 before reporting the original task as done.
+- Fixes and prevention measures MUST follow the project's change process and its limits, including the tiers and fix-round bounds in `.claude/rules/main-agent.md` where that file exists. A change process is a written procedure for making and verifying changes, such as stages, review, or verification steps, in `CLAUDE.md`, `CONTRIBUTING.md`, or a file in `.claude/rules/` other than this one. If the project has none, MUST ask the user before applying a prevention measure.
+- MUST report to the user every instance and every prevention measure left unapplied because of those limits.
+- A subagent MAY read any file for step 2. It MUST edit only the files its task allows. It MUST report the root cause, the instances it could not fix, and the proposed prevention measure to the agent that delegated the task. That agent MUST complete the remaining work in steps 2 to 5.
+
+## Reviewing after a new requirement
+
+- After adding a requirement (`MUST` or `MUST NOT`) or making one stricter, MUST review the existing files within the requirement's stated scope for compliance with it. If the requirement states no scope, MUST ask the user for the scope before reviewing.
+- MUST fix non-compliant files that the user's request named or that the current change created or modified. A fix to an instruction file or a permission setting MUST follow "Changing instructions, hooks, and permissions".
+- For any other non-compliant file, MUST list it and ask the user before changing it.
+
 ## Core installation check
 
 Local state file: `~/.noah-kit/state.json`, or `state.json` in the directory set by `NOAH_HOME`. Project entries are keyed by the manifest's `project.id`.
