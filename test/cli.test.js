@@ -94,7 +94,7 @@ test('rejects unsupported commands without modifying the project', async () => {
     const result = runCli(root, 'update');
 
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /Supported command: init/);
+    assert.match(result.stderr, /Supported commands: init, install, status/);
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
