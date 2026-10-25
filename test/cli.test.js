@@ -96,7 +96,7 @@ test('rejects unsupported commands without modifying the project', async () => {
     const result = runCli(root, 'update');
 
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /Supported commands: init, install, status, decline/);
+    assert.match(result.stderr, /Supported commands: init, install, status, decline, onboarding/);
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
@@ -238,5 +238,79 @@ test('rejects unsupported Core version range syntax rather than guessing', async
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Unsupported Core version range syntax/);
     await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.0', 'core-manifest.json'), 'utf8'), { code: 'ENOENT' });
+  });
+});
+
+
+test('onboarding reports when the current directory is not a Noah Kit project', async () => {
+  await withTemporaryProject(async (root) => {
+    const result = runCli(root, 'onboarding');
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /NO_KIT_PROJECT/);
+  });
+});
+
+test('onboarding prompts for installation when no compatible Core is installed', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const result = runCli(root, 'onboarding');
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /PROMPT_INSTALL/);
+  });
+});
+
+test('onboarding suppresses prompts during the local decline reminder interval', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    assert.equal(runCli(root, 'decline').status, 0);
+    const result = runCli(root, 'onboarding');
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /INSTALL_DECLINED/);
+  });
+});
+
+test('onboarding prompts again after the recorded decline interval expires', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    assert.equal(runCli(root, 'decline').status, 0);
+    const statePath = path.join(root, '.test-noah-home', 'state.json');
+    const state = JSON.parse(await readFile(statePath, 'utf8'));
+    const manifest = JSON.parse(await readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'));
+    state.projects[manifest.project.id].declined_install_at = '2000-01-01T00:00:00.000Z';
+    await writeFile(statePath, JSON.stringify(state, null, 2));
+
+    const result = runCli(root, 'onboarding');
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /PROMPT_INSTALL/);
+  });
+});
+
+test('onboarding recognizes an installed compatible Core', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    assert.equal(runCli(root, 'install').status, 0);
+    const result = runCli(root, 'onboarding');
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /CORE_READY/);
+  });
+});
+
+test('onboarding does not recommend a Core release that violates the project range', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    manifest.kit.core_version_range = '>=0.2.0';
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const result = runCli(root, 'onboarding');
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /NO_COMPATIBLE_RELEASE/);
   });
 });
