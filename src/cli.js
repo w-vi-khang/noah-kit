@@ -6,6 +6,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getNoahHome, loadLocalState, saveLocalState } from './local-state.js';
+import { createLaunchers } from './launcher.js';
 
 const CLI_VERSION = '0.1.0';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
@@ -482,8 +483,8 @@ export async function run(args = process.argv.slice(2)) {
     process.stdout.write(`${CLI_VERSION}\n`);
     return 0;
   }
-  if (!['init', 'install', 'status', 'decline', 'onboarding'].includes(options.command)) {
-    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding.\nUse --help to see usage.\n');
+  if (!['init', 'install', 'status', 'decline', 'onboarding', 'link'].includes(options.command)) {
+    process.stderr.write('A command is required. Supported commands: init, install, status, decline, onboarding, link.\nUse --help to see usage.\n');
     return 2;
   }
 
@@ -496,6 +497,9 @@ export async function run(args = process.argv.slice(2)) {
       await declineInstallation(options.cwd);
     } else if (options.command === 'onboarding') {
       await showOnboarding(options.cwd);
+    } else if (options.command === 'link') {
+      const launchers = await createLaunchers();
+      process.stdout.write(`Created Noah Kit launchers in:\n  ${launchers.binDirectory}\nAdd this directory to your PATH manually if you want to run `noah` from any terminal. No shell configuration was changed.\n`);
     } else {
       await showStatus(options.cwd);
     }
