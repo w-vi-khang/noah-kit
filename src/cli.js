@@ -172,7 +172,7 @@ This project declares Noah Kit in `.noah-kit/manifest.json`. Read that manifest 
 - Treat `.noah-kit/manifest.json` as committed project configuration, not as a place for user-local state or secrets.
 - Do not claim a test or verification passed unless it was actually run and its result was observed.
 - Preserve user changes. Do not overwrite conflicting files or run project scripts and migrations merely because they are referenced by configuration.
-- If Noah Kit Core is not installed, ask the user to run the documented `noah install` command. Do not silently download or execute code.
+- If Noah Kit Core is not installed, ask the user whether they want to install it. Only after approval, suggest running `npx --yes github:w-vi-khang/noah-kit install`. Do not silently download or execute code.
 
 ## Project setup
 
