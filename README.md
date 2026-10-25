@@ -64,15 +64,23 @@ If you decline installation for a project, record that decision locally:
 npx --yes github:w-vi-khang/noah-kit decline
 ```
 
-This stores the decision and reminder interval in local state. Automatic startup prompting and scheduled update checks are not implemented yet.
+This stores the decision and reminder interval in local state. Automatic startup prompting is not implemented yet.
+
+Check whether a newer compatible Core release has been published:
+
+```sh
+npx --yes github:w-vi-khang/noah-kit update-check
+```
+
+The command reads the release index (`releases.json`), compares it with the local Core and the project's version range, and records the result in local state. It respects the project's check schedule (`updates.check_after_local_time`, default `17:00`) and reports `CHECK_NOT_DUE` when no check is due; `--force` checks immediately. It reports only and never downloads or installs a release. Nothing invokes it in the background: the schedule is evaluated only when the command runs. See `docs/releases.md` for the index format, trust model, and limitations.
 
 The default local data directory is `~/.noah-kit/` (with the home-directory equivalent on Windows). It stores versioned Core files and `state.json`; it is not part of the project repository. Set `NOAH_HOME` only when you intentionally want to use a different local data directory. The installer copies a fixed set of files and does not run package lifecycle scripts or project migrations.
 
-**Current limitations:** the CLI supports project initialization, local Core installation, status inspection, declined-install recording, onboarding decisions, and local launcher generation. The launcher does not modify `PATH` or shell configuration. Noah Kit does not yet perform automatic startup onboarding, check for new releases, update an installed Core, verify signed release artifacts, run migrations, or install skills and agent workflows. These capabilities remain disabled until their safety and recovery behavior is implemented.
+**Current limitations:** the CLI supports project initialization, local Core installation, status inspection, declined-install recording, onboarding decisions, local launcher generation, and on-demand release checks. The launcher does not modify `PATH` or shell configuration. Noah Kit does not yet perform automatic startup onboarding or scheduled background checks, install or update Core from a published release, verify signed release metadata, run migrations, or install skills and agent workflows. These capabilities remain disabled until their safety and recovery behavior is implemented.
 
 ## Initial implementation scope
 
-The current foundation includes the architecture contract, cross-platform initializer, versioned local Core installation, schema-validated local state, project/Core compatibility checks, and explicit recording of declined installation choices. Automated onboarding, release updates, migrations, and multi-agent orchestration remain future milestones.
+The current foundation includes the architecture contract, cross-platform initializer, versioned local Core installation, schema-validated local state, project/Core compatibility checks, and explicit recording of declined installation choices, and a report-only release check against a validated release index. Automated onboarding, release installation and updates, migrations, and multi-agent orchestration remain future milestones.
 
 ## Status
 

@@ -16,7 +16,7 @@ Project configuration lives in a committed, dedicated directory such as `.noah-k
 
 ### 3. Local state
 
-Local state lives outside the project repository, under `~/.noah-kit/` by default (or `NOAH_HOME` when explicitly overridden). The initial schema stores installed Core versions, project identity mappings, and declined-install decisions. Update-check timestamps, caches, backups, and operation logs are planned additions. State writes use a temporary file and rename, and invalid state is preserved with an actionable error rather than silently reset. Local state must never be committed to the project.
+Local state lives outside the project repository, under `~/.noah-kit/` by default (or `NOAH_HOME` when explicitly overridden). The schema stores installed Core versions, project identity mappings, declined-install decisions, and per-channel release-check records (`update_checks`). Caches, backups, and operation logs are planned additions. State writes use a temporary file and rename, and invalid state is preserved with an actionable error rather than silently reset. Local state must never be committed to the project.
 
 ## Claude Code adapter
 
@@ -38,6 +38,8 @@ The adapter must not assume symbolic links behave identically on Windows, macOS,
 Scheduled checks are evaluated when the user starts a compatible Noah Kit/Claude Code session. Noah Kit cannot promise a check at a specific wall-clock time when the application is closed. An optional operating-system scheduler may be added later, but it must be separately configured and clearly disclosed.
 
 A schedule such as 17:00 means: if a check is due and no successful check has happened for the configured interval, prompt on the next eligible startup. Use an explicit timezone. Avoid repeated prompts within the same session.
+
+`noah update-check` implements this evaluation on demand. It reads a validated release index whose entries pin exact Git commits, selects the newest compatible release, and records the result locally. It never installs anything. See `docs/releases.md` for the index schema, the trust model, and what it does not verify. No startup hook or OS scheduler invokes it yet.
 
 Updates are opt-in by default. Security advisories, routine patches, feature releases, and breaking changes should be categorized separately. A project may pin a compatible version range; local installation policy must not silently bypass that constraint.
 

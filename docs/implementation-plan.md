@@ -38,11 +38,18 @@ Acceptance criteria:
 ## Milestone 3: Versioned Core and safe updates
 
 - [x] Add versioned Core installation into user-local storage.
-- [ ] Add an explicit update command and release selection policy.
+- [x] Define a release index schema with exact Git commit pins and fail-closed validation (`docs/releases.md`).
+- [x] Add a report-only `noah update-check` command with a release selection policy (newest compatible version in the project's channel).
+- [x] Evaluate the check schedule deterministically: one catch-up check after missed slots, 60-minute backoff after failures, and no background process.
+- [x] Record update-check attempts, results, and failures in user-local state without a schema migration.
+- [x] Test schedule evaluation, index validation, release selection, failure recording, and state preservation.
+- [ ] Add an explicit update/install command that fetches a selected release and verifies its pinned commit before activation.
+- [ ] Add signed release metadata with a pinned public key and replay protection; the current index is protected only by HTTPS and repository access control.
+- [ ] Invoke the update check from a supported Claude Code startup hook or a user-configured OS scheduler.
 - [x] Constrain compatible Core versions in project configuration and fail closed on unsupported range syntax.
-- [ ] Verify downloaded release metadata and integrity before activation.
+- [ ] Verify downloaded release artifacts against their pinned commit before activation.
 - [x] Ensure the initial Core installer does not modify project files or overwrite an unmarked existing Core directory.
-- [ ] Record update checks, successful updates, and failures in local state.
+- [ ] Record successful updates and update failures in local state.
 - [x] Stage initial installation in a temporary directory before activation.
 - [x] Generate a stable user-local launcher with Unix and Windows entry-point files.
 - [x] Test launcher dispatch and refusal to overwrite unmanaged files.
