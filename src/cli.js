@@ -239,13 +239,13 @@ function compareVersions(left, right) {
 }
 
 function isVersionCompatible(version, range) {
-  const terms = range.trim().split(/\\s+/);
+  const terms = range.trim().split(/\s+/);
   if (terms.length === 0 || !range.trim()) {
     throw new Error('The project Core version range is empty.');
   }
 
   return terms.every((term) => {
-    const match = term.match(/^(>=|<=|>|<|=)?(\\d+\\.\\d+\\.\\d+)$/);
+    const match = term.match(/^(>=|<=|>|<|=)?(\d+\.\d+\.\d+)$/);
     if (!match) {
       throw new Error(`Unsupported Core version range syntax: "${range}". Use space-separated exact versions or >=, >, <=, < constraints.`);
     }
