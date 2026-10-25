@@ -28,7 +28,7 @@ To initialize a different directory:
 npx --yes github:w-vi-khang/noah-kit init --cwd ../my-project
 ```
 
-The command creates `.noah-kit/manifest.json` and `CLAUDE.md` only when they are missing. It preserves existing files and rejects an invalid existing manifest. Review the generated files and commit them to the project repository.
+The command creates `.noah-kit/manifest.json` and `.claude/rules/noah-kit.md` only when they are missing. The dedicated rule lets Claude Code discover Noah Kit without replacing a project's existing `CLAUDE.md`. The command preserves existing files and rejects an invalid existing manifest. Review the generated files and commit them to the project repository.
 
 **Current limitation:** this first milestone provides the initializer, not the persistent Core installer or update engine. It does not yet install Core skills, manage local state, check releases, or run migrations. Those features will be added only with explicit safety and recovery behavior.
 
