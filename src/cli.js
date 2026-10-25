@@ -235,6 +235,9 @@ async function initializeProject(root) {
 }
 
 function compareVersions(left, right) {
+  if (!/^\\d+\\.\\d+\\.\\d+$/.test(left) || !/^\\d+\\.\\d+\\.\\d+$/.test(right)) {
+    throw new Error('Core versions must use the stable MAJOR.MINOR.PATCH format.');
+  }
   const leftParts = left.split('.').map(Number);
   const rightParts = right.split('.').map(Number);
   for (let index = 0; index < 3; index += 1) {
