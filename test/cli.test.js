@@ -96,7 +96,7 @@ test('rejects unsupported commands without modifying the project', async () => {
     const result = runCli(root, 'update');
 
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /Supported commands: init, install, status, decline, onboarding/);
+    assert.match(result.stderr, /Supported commands: init, install, status, decline, onboarding, link/);
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
@@ -329,5 +329,45 @@ test('successful installation clears a previous declined-install choice', async 
     assert.equal(projectState.installed_version, '0.1.0');
     assert.equal('declined_install_at' in projectState, false);
     assert.equal('declined_remind_after_days' in projectState, false);
+  });
+});
+
+
+test('creates managed cross-platform launchers and dispatches to installed Core', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'install').status, 0);
+    const result = runCli(root, 'link');
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Add this directory to your PATH manually/);
+
+    const home = path.join(root, '.test-noah-home');
+    const binDirectory = path.join(home, 'bin');
+    const dispatcherPath = path.join(binDirectory, 'noah.js');
+    const unixLauncherPath = path.join(binDirectory, 'noah');
+    const windowsLauncherPath = path.join(binDirectory, 'noah.cmd');
+    assert.match(await readFile(dispatcherPath, 'utf8'), /NOAH_KIT_MANAGED_LAUNCHER/);
+    assert.match(await readFile(unixLauncherPath, 'utf8'), /NOAH_KIT_MANAGED_LAUNCHER/);
+    assert.match(await readFile(windowsLauncherPath, 'utf8'), /NOAH_KIT_MANAGED_LAUNCHER/);
+
+    const dispatched = spawnSync(process.execPath, [dispatcherPath, '--version'], {
+      encoding: 'utf8',
+      env: { ...process.env, NOAH_HOME: home }
+    });
+    assert.equal(dispatched.status, 0, dispatched.stderr);
+    assert.match(dispatched.stdout, /^0\.1\.0\s*$/);
+  });
+});
+
+test('refuses to overwrite an unmanaged launcher file', async () => {
+  await withTemporaryProject(async (root) => {
+    const home = path.join(root, '.test-noah-home');
+    const binDirectory = path.join(home, 'bin');
+    await mkdir(binDirectory, { recursive: true });
+    const existingPath = path.join(binDirectory, 'noah.js');
+    await writeFile(existingPath, 'user-owned content');
+    const result = runCli(root, 'link');
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Refusing to overwrite an unmanaged file/);
+    assert.equal(await readFile(existingPath, 'utf8'), 'user-owned content');
   });
 });
