@@ -37,7 +37,7 @@ function validateState(state) {
     throw new Error('Local state projects must be an object.');
   }
   for (const [version, installation] of Object.entries(state.installations)) {
-    if (!/^\\d+\\.\\d+\\.\\d+$/.test(version) || !installation || typeof installation !== 'object' || Array.isArray(installation)) {
+    if (!/^\d+\.\d+\.\d+$/.test(version) || !installation || typeof installation !== 'object' || Array.isArray(installation)) {
       throw new Error('Local state contains an invalid Core installation entry.');
     }
     if (installation.version !== version || typeof installation.path !== 'string' || !installation.path.trim()) {
