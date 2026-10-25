@@ -1,24 +1,34 @@
 # Noah Kit Development Instructions
 
-Read `README.md`, `CONTRIBUTING.md`, `docs/architecture.md`, and `docs/implementation-plan.md` before making architectural changes.
+Scope: developing Noah Kit itself in this repository. Rules that apply to every Noah Kit project, including this one, are in `.claude/rules/noah-kit.md`.
 
-## Mandatory language rule
+## Required reading
 
-Write all code in English. This includes source code, identifiers, code comments, configuration keys and human-readable configuration values, tests, fixtures, commit messages, technical documentation, skills, agent instructions, and generated project instructions. Preserve protocol-defined values and external user content when changing them would alter behavior. Stakeholder conversations may use the stakeholder's preferred language.
+- Before an architectural change, MUST read `README.md`, `CONTRIBUTING.md`, `docs/architecture.md`, and `docs/implementation-plan.md`.
+- Before creating or editing an instruction file, generated instruction text, or documentation, MUST read `.claude/rules/instruction-authoring.md`.
 
-## Repository safety rules
+## Language
 
-- Keep reusable Core logic, committed project configuration, and user-local state separate.
-- Treat `.noah-kit/manifest.json` as project configuration. Never put credentials, machine-specific paths, declined-install state, caches, or update timestamps in it.
-- Do not add update automation, executable hooks, or migration execution until their safety contracts and tests are implemented.
-- Never silently overwrite user-authored files. Initialization must preflight conflicts and preserve existing content.
-- Do not claim tests passed unless they were actually run and their output was observed.
-- A successful command is not sufficient if acceptance criteria are not met; verify the behavior and scope explicitly.
-- Keep changes small and end-to-end testable. Add tests for behavior changes.
-- Before introducing subagents, define task ownership, expected outputs, acceptance criteria, and how results will be verified.
+- Committed content MUST be in English. This covers code, identifiers, comments, configuration keys and human-readable values, tests, fixtures, commit messages, documentation, skills, agent instructions, and generated project instructions.
+- Exception: preserve protocol-defined values and external user content when translating them would change behavior.
+- Conversation language is set per user; see `.claude/rules/noah-kit.md`.
 
-## Current implementation boundary
+## Repository safety
 
-The CLI currently supports `init`, `install`, `status`, `decline`, `onboarding`, `link`, `update-check`, and `language`. It can install the current Core version into user-local versioned storage, validate the project's supported Core version-range syntax, preserve local state, record declined-install choices, report whether onboarding should be offered, create a user-local launcher without modifying shell configuration, report whether a newer compatible release is listed in the release index (`docs/releases.md`), and store a per-user conversation language in local state. `update-check` only reports and records results; it never downloads or installs.
+- Core logic, committed project configuration, and user-local state MUST stay separate.
+- `.noah-kit/manifest.json` MUST NOT contain credentials, machine-specific paths, declined-install state, caches, or update timestamps.
+- MUST NOT add update automation, executable hooks, or migration execution until a safety contract and tests for it exist.
+- MUST NOT overwrite user-authored files. Initialization MUST detect conflicts before writing and preserve existing content.
 
-Automatic startup prompting, background or OS-scheduled release checks, release installation from the index, signed release metadata, Core update/rollback transactions, migration execution, executable Claude Code lifecycle hooks, skills, and multi-agent orchestration are not implemented or verified yet. Do not imply otherwise.
+## Changes and verification
+
+- Keep each change small and testable end to end. Add tests for every behavior change.
+- MUST NOT report a test or check as passed unless it ran and its output was observed.
+- A successful command does not complete a task. MUST verify the acceptance criteria and scope.
+- Before delegating to a subagent, MUST define its task ownership, expected output, acceptance criteria, and how the result will be verified.
+
+## Implementation boundary
+
+- `docs/implementation-plan.md` is the authoritative record of what is implemented. Checked items are implemented and tested; unchecked items are not.
+- MUST NOT describe an unchecked item as implemented in code, documentation, or conversation.
+- When a change implements or removes a planned item, MUST update its checkbox in the same change.

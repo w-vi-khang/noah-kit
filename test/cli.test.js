@@ -41,7 +41,7 @@ test('initializes a fresh project with a valid manifest and Claude Code rule', a
     assert.equal(manifest.kit.id, 'noah-kit');
     assert.equal(manifest.project.name, 'sample-app');
     assert.ok(manifest.project.id.length > 0);
-    assert.match(instructions, /Write all code.*in English/);
+    assert.match(instructions, /MUST be in English/);
     assert.match(result.stdout, /Review and commit these files/);
   });
 });
@@ -448,7 +448,7 @@ test('the generated Claude Code rule applies the local communication language', 
     assert.equal(runCli(root, 'init').status, 0);
     const instructions = await readFile(path.join(root, '.claude', 'rules', 'noah-kit.md'), 'utf8');
     assert.match(instructions, /preferences\.communication_language/);
-    assert.match(instructions, /code and technical artifacts stay in English/);
+    assert.match(instructions, /Code, identifiers, code comments, tests, configuration keys, and technical documentation MUST be in English/);
   });
 });
 
