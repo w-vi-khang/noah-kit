@@ -25,7 +25,6 @@ Scope: developing Noah Kit itself in this repository. Rules that apply to every 
 - SHOULD keep each change to one concern that can be tested end to end.
 - MUST add tests for every behavior change.
 - A successful command does not complete a task. MUST verify the acceptance criteria and scope.
-- Before delegating to a subagent, MUST define its task ownership, expected output, acceptance criteria, and how the result will be verified.
 
 ## Implementation boundary
 

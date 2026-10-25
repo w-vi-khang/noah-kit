@@ -70,9 +70,7 @@ Migrations must declare an identifier, version range, affected paths, preconditi
 
 ## Agent model
 
-The main agent is the sole user-facing coordinator. It clarifies requirements, defines acceptance criteria, delegates bounded tasks when useful, integrates results, and owns the final report. Subagents must have explicit task scope, owned files, expected outputs, and verification requirements.
-
-Do not spawn agents by default for trivial tasks. Begin with a main agent and targeted implementation/review or verification delegation. Parallel work is allowed only when file ownership and integration boundaries are clear.
+The main agent is the sole user-facing coordinator. It classifies each request into a tier, runs only the stages that tier requires, delegates those stages to specialized subagents, integrates their results, and owns commits and the final report. See `docs/agent-workflow.md` for the design and `.claude/rules/main-agent.md` for the requirements.
 
 ## Verification states
 
