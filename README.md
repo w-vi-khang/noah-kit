@@ -68,7 +68,7 @@ This stores the decision and reminder interval in local state. Automatic startup
 
 The default local data directory is `~/.noah-kit/` (with the home-directory equivalent on Windows). It stores versioned Core files and `state.json`; it is not part of the project repository. Set `NOAH_HOME` only when you intentionally want to use a different local data directory. The installer copies a fixed set of files and does not run package lifecycle scripts or project migrations.
 
-**Current limitations:** the CLI currently supports project initialization, local Core installation, status inspection, and recording a declined-install choice. It does not yet perform automatic startup onboarding, evaluate reminder deadlines, check for new releases, update an installed Core, verify signed release artifacts, run migrations, or install skills and agent workflows. These capabilities remain disabled until their safety and recovery behavior is implemented.
+**Current limitations:** the CLI supports project initialization, local Core installation, status inspection, declined-install recording, onboarding decisions, and local launcher generation. The launcher does not modify `PATH` or shell configuration. Noah Kit does not yet perform automatic startup onboarding, check for new releases, update an installed Core, verify signed release artifacts, run migrations, or install skills and agent workflows. These capabilities remain disabled until their safety and recovery behavior is implemented.
 
 ## Initial implementation scope
 
