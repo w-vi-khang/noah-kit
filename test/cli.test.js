@@ -314,3 +314,20 @@ test('onboarding does not recommend a Core release that violates the project ran
     assert.match(result.stdout, /NO_COMPATIBLE_RELEASE/);
   });
 });
+
+
+test('successful installation clears a previous declined-install choice', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    assert.equal(runCli(root, 'decline').status, 0);
+    assert.equal(runCli(root, 'install').status, 0);
+
+    const state = JSON.parse(await readFile(path.join(root, '.test-noah-home', 'state.json'), 'utf8'));
+    const manifest = JSON.parse(await readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'));
+    const projectState = state.projects[manifest.project.id];
+
+    assert.equal(projectState.installed_version, '0.1.0');
+    assert.equal('declined_install_at' in projectState, false);
+    assert.equal('declined_remind_after_days' in projectState, false);
+  });
+});
