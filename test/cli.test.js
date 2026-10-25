@@ -205,3 +205,36 @@ test('refuses to record a declined installation without project configuration', 
     await assert.rejects(readFile(path.join(root, '.test-noah-home', 'state.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
+
+
+test('rejects an incompatible Core version range before writing local installation files', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    manifest.kit.core_version_range = '<0.1.0';
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const result = runCli(root, 'install');
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /does not satisfy the project's required range/);
+    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.0', 'core-manifest.json'), 'utf8'), { code: 'ENOENT' });
+  });
+});
+
+test('rejects unsupported Core version range syntax rather than guessing', async () => {
+  await withTemporaryProject(async (root) => {
+    assert.equal(runCli(root, 'init').status, 0);
+    const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    manifest.kit.core_version_range = '^0.1.0';
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const result = runCli(root, 'install');
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Unsupported Core version range syntax/);
+    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.0', 'core-manifest.json'), 'utf8'), { code: 'ENOENT' });
+  });
+});
