@@ -8,7 +8,7 @@ Noah Kit provides reusable workflow behavior for Claude Code while allowing each
 
 ### 1. Core
 
-Core is installed outside the target project and contains reusable runtime code, versioned templates, built-in rules, skills, update logic, and migration tooling. Core installation and update operations must be explicit and must validate downloaded artifacts before activation.
+Core is installed outside the target project and contains reusable runtime code, versioned templates, built-in rules, skills, update logic, and migration tooling. Core installation and update operations must be explicit and must validate source metadata before activation. The initial installer copies only the package manifest, Core source directory, and optional documentation into a versioned local directory; it does not run package lifecycle scripts or project migrations. Artifact signatures and remote release integrity checks remain future work.
 
 ### 2. Project configuration
 
@@ -16,7 +16,7 @@ Project configuration lives in a committed, dedicated directory such as `.noah-k
 
 ### 3. Local state
 
-Local state lives outside the project repository, under a user-owned data directory. It tracks installation decisions, installed Core versions, update-check timestamps, local project identity mappings, caches, backups, and operation logs. It must never be committed to the project.
+Local state lives outside the project repository, under `~/.noah-kit/` by default (or `NOAH_HOME` when explicitly overridden). The initial schema stores installed Core versions and project identity mappings; installation-decline decisions, update-check timestamps, caches, backups, and operation logs are planned additions. State writes use a temporary file and rename, and invalid state is preserved with an actionable error rather than silently reset. Local state must never be committed to the project.
 
 ## Claude Code adapter
 
