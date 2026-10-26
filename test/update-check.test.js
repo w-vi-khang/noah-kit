@@ -63,7 +63,7 @@ test('reports a compatible update without downloading or installing it', async (
     const result = runCli(root, 'update-check', '--source', indexPath);
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^UPDATE_AVAILABLE: Core 0\.1\.2 \(patch/);
+    assert.match(result.stdout, /^UPDATE_AVAILABLE: Core 0\.1\.3 \(patch/);
     assert.match(result.stdout, /Nothing was downloaded or installed/);
     assert.equal(await readFile(manifestPath, 'utf8'), originalManifest);
     await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.3', 'core-manifest.json')), { code: 'ENOENT' });
