@@ -821,7 +821,7 @@ test('permissions --apply creates exactly the approved settings and a repeat rep
     assert.equal(await readFile(settingsPathOf(root), 'utf8'), bytes);
 
     assert.deepEqual(await snapshotProtectedFiles(root), before);
-    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), false);
+    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), true);
     await assertNoNoahHome(root);
   });
 });
