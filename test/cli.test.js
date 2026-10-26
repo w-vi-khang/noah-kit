@@ -783,7 +783,7 @@ test('permissions preview after init prints WILL_CREATE, both rules and reasons,
     assert.ok(result.stdout.includes(`  - ${VISIBILITY_NOTE}\n`), 'preview says it cannot see user or managed settings');
     assert.ok(result.stdout.endsWith('Preview only. Nothing was written.\n'));
     assert.equal(await pathExists(settingsPathOf(root)), false);
-    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), false);
+    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), true);
     assert.deepEqual(await snapshotProtectedFiles(root), before);
     await assertNoNoahHome(root);
   });
@@ -1163,7 +1163,7 @@ test('permissions never parses or changes settings.local.json, the manifest, the
 
     assert.equal(await readFile(localSettingsPath, 'utf8'), localContent);
     assert.deepEqual(await snapshotProtectedFiles(root), before);
-    assert.deepEqual((await readdir(path.join(root, '.claude'))).sort(), ['rules', 'settings.json', 'settings.local.json']);
+    assert.deepEqual((await readdir(path.join(root, '.claude'))).sort(), ['rules', 'settings.local.json', 'settings.json', 'skills'].sort());
     await assertNoNoahHome(root);
   });
 });
