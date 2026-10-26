@@ -153,7 +153,8 @@ async function readProjectManifest(root) {
     if (error instanceof SyntaxError) {
       throw new Error(`${MANIFEST_PATH} is not valid JSON.`);
     }
-    throw error;
+    if (error.message.includes(MANIFEST_PATH)) throw error;
+    throw new Error(`${MANIFEST_PATH}: ${error.message}`);
   }
 }
 
