@@ -53,14 +53,33 @@ The rule sets the requirements. The design choices behind them:
 - **No nested delegation** comes from leaving the `Agent` tool out of every subagent. Claude Code withholds subagent spawning from an agent whose tool list lacks `Agent` (source: https://code.claude.com/docs/en/sub-agents).
 - **Bounded retries** and a **single writer of history** keep a failing loop from running unattended.
 
+## Evidence-based verification
+
+Projects may define named verification commands in `.noah-kit/manifest.json`. Each command is an argument array, not an implicit shell snippet. Example:
+
+```json
+{
+  "verification": {
+    "commands": {
+      "unit": ["npm", "test"],
+      "check": ["npm", "run", "check"]
+    }
+  }
+}
+```
+
+Run one explicitly configured check with `node scripts/verify-run.js --cwd <project-path> --name unit`; omit `--name` to run the first configured command. This wrapper is shipped in the Noah Kit repository/plugin, so projects using the plugin should invoke it from the plugin checkout/cache path or configure an equivalent local script. It writes full output under `.noah-kit/verification/` and records the command, timestamps, duration, exit code, Git revision, changed-path hashes, and result status. The Stop hook compares the latest passing record with the current revision and changed-file contents. A changed source fingerprint, changed command configuration, or missing log invalidates the result.
+
+The runner never picks a command automatically from `package.json`; the project maintainer must explicitly configure the command. The command is executed when the user or agent explicitly runs the wrapper, so review the configured command before enabling it. A check that modifies tracked or untracked project files during execution is marked `INVALIDATED_DURING_RUN`. Logs and evidence are local project artifacts and should generally be ignored by version control if they are not intended for commits.
+
 ## Limitations
 
 These are instructions to the model, not enforced controls:
 
 - Tier choice, stage selection, and briefs depend on the MA following `.claude/rules/main-agent.md`. Nothing blocks a skipped stage.
 - Read-only agents have Bash, so they could still modify files. Their instructions forbid it, but nothing enforces it.
-- Hooks could later enforce a verification gate or block subagent commits, once a hook safety contract exists.
-- No skills exist yet. The MA rule allows using skills once they are defined.
+- The plugin now registers a Stop hook that reminds the main agent to inspect a dirty working tree and report verification evidence. It is a reminder, not a test runner or correctness guarantee; it fails open on malformed input, Git errors, or repeated stop events. Subagent commit prevention is still instruction-based.
+- Three plugin skills now cover workflow orchestration, failure diagnosis, and efficient verification. Their activation remains model-driven; structural tests verify that the files are registered, not that a model follows them.
 - The structural test (`test/agents.test.js`) checks agent fields, that no agent fixes a model or effort, tool boundaries, and that the rule names every agent. It does not test how the model behaves in a real session.
 
 ## Distribution to other projects

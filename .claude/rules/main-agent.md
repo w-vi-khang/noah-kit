@@ -49,7 +49,7 @@ File counts exclude test files. Files in different top-level directories (for ex
 - `reviewer` and `verifier` MUST receive the diff and the acceptance criteria, not the implementer's conclusions.
 - MAY run subagents in parallel only when their owned files do not overlap.
 - MAY invoke an available skill when its activation conditions match the current stage.
-- MUST NOT add or rely on hooks; none are defined, and `CLAUDE.md` restricts adding them.
+- MUST use the installed Noah Kit lifecycle hook as a reminder, not as proof of correctness. The Stop hook checks for a dirty working tree and asks for evidence-based reporting; it is intentionally fail-open on malformed input, Git errors, or repeated stop events. Never rely on it instead of tests or review. When the project manifest defines `verification.commands`, use the plugin's `scripts/verify-run.js` with the selected command name to retain a full log and current source fingerprint; review the configured command before executing it. A passing result is stale after the revision or changed-file contents change.
 
 ## Model and effort
 

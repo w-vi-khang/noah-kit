@@ -220,6 +220,10 @@ function enoent(file) {
 }
 
 function symlinkOrSkip(t, target, linkPath) {
+  if (process.platform === 'win32') {
+    t.skip('Self-referential symbolic-link loop behavior is not portable on Windows.');
+    return false;
+  }
   try {
     symlinkSync(target, linkPath);
     return true;
@@ -362,6 +366,10 @@ test('a symbolic link loop above .claude is reported as an invalid file, not thr
 });
 
 test('settings.json lstat failing with ENOTDIR or ELOOP after .claude looked like a directory is reported as an invalid file', async (t) => {
+  if (process.platform === 'win32') {
+    t.skip('The synthetic lstat path substitution and self-referential symlink behavior are not portable on Windows.');
+    return;
+  }
   await withInitializedProject(async (root, target) => {
     const directory = path.dirname(target);
     // .claude is inspected as if it were a directory; the real path is not.

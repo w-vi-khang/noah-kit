@@ -13,6 +13,7 @@ import { compareVersions, isVersionCompatible } from './version.js';
 
 const CLI_VERSION = '0.1.1';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
+const MANIFEST_DISPLAY_PATH = '.noah-kit/manifest.json';
 const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -42,7 +43,7 @@ Commands:
              Preview the Claude Code permission rules Noah Kit proposes for
              this project. With --apply, create .claude/settings.json only
              when no settings file exists; an existing file is never changed.
-  link       Create user-local launcher files without changing PATH
+  verify     Run an explicitly configured check and save its log and source fingerprint\n  link       Create user-local launcher files without changing PATH
   update-check
              Check the release index for a newer compatible Core when the
              project's check schedule is due. Reports only; never installs.
@@ -62,7 +63,7 @@ Options:
 }
 
 function parseArguments(args) {
-  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false, apply: false };
+  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false, apply: false, name: undefined };
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
@@ -89,6 +90,13 @@ function parseArguments(args) {
       result.force = true;
     } else if (argument === '--apply') {
       result.apply = true;
+    } else if (argument === '--name') {
+      const value = args[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error('Option --name requires a configured verification command name.');
+      }
+      result.name = value;
+      index += 1;
     } else if (argument.startsWith('-')) {
       throw new Error(`Unknown option: ${argument}`);
     } else if (result.command === null) {
@@ -144,9 +152,10 @@ async function readProjectManifest(root) {
     return validateManifest(JSON.parse(await readFile(manifestPath, 'utf8')));
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error(`${MANIFEST_PATH} is not valid JSON.`);
+      throw new Error(`${MANIFEST_DISPLAY_PATH} is not valid JSON.`);
     }
-    throw error;
+    if (error.message.includes(MANIFEST_PATH)) throw error;
+    throw new Error(`${MANIFEST_DISPLAY_PATH}: ${error.message}`);
   }
 }
 
@@ -197,6 +206,9 @@ function createManifest(projectName) {
       subagents: true,
       hooks: false,
       migrations: false
+    },
+    verification: {
+      commands: {}
     }
   };
 }
@@ -250,7 +262,7 @@ When a mistake is detected:
 3. MUST add or strengthen a prevention measure: an instruction, a test, or another executable check that would have prevented or detected the mistake.
    - If an existing instruction already requires the correct behavior, MUST NOT add a duplicate. MUST make that instruction more explicit or add a check that detects the violation.
    - MUST NOT keep a prevention measure only in the agent's local memory.
-   - MUST NOT add a Claude Code hook or a Git hook as a prevention measure. If only a hook can prevent the mistake, MUST propose the hook to the user instead.
+   - MUST NOT add an ad hoc Claude Code hook or Git hook as a prevention measure without explicit user approval and a tested failure/loop contract. If only a hook can prevent the mistake, MUST propose it to the user first. Reusable Noah Kit plugin hooks are governed by the approved Core change and hook-specific tests.
    - A measure that changes an instruction file or a permission setting MUST follow "Changing instructions, hooks, and permissions". If the user has not approved it, MUST report it as proposed, not as applied.
 4. MUST apply the prevention measure according to where the work happens:
    - In the Noah Kit source repository (its root \`package.json\` has \`name\` \`noah-kit\`), MUST apply it in that repository.

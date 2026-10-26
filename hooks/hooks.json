@@ -1,0 +1,17 @@
+{
+  "description": "Noah Kit lifecycle safeguards",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-gate.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

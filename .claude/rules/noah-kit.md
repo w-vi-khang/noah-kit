@@ -46,7 +46,7 @@ When a mistake is detected:
 3. MUST add or strengthen a prevention measure: an instruction, a test, or another executable check that would have prevented or detected the mistake.
    - If an existing instruction already requires the correct behavior, MUST NOT add a duplicate. MUST make that instruction more explicit or add a check that detects the violation.
    - MUST NOT keep a prevention measure only in the agent's local memory.
-   - MUST NOT add a Claude Code hook or a Git hook as a prevention measure. If only a hook can prevent the mistake, MUST propose the hook to the user instead.
+   - MUST NOT add an ad hoc Claude Code hook or Git hook as a prevention measure without explicit user approval and a tested failure/loop contract. If only a hook can prevent the mistake, MUST propose it to the user first. Reusable Noah Kit plugin hooks are governed by the approved Core change and hook-specific tests.
    - A measure that changes an instruction file or a permission setting MUST follow "Changing instructions, hooks, and permissions". If the user has not approved it, MUST report it as proposed, not as applied.
 4. MUST apply the prevention measure according to where the work happens:
    - In the Noah Kit source repository (its root `package.json` has `name` `noah-kit`), MUST apply it in that repository.
