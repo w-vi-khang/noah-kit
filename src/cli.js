@@ -91,6 +91,13 @@ function parseArguments(args) {
       result.force = true;
     } else if (argument === '--apply') {
       result.apply = true;
+    } else if (argument === '--name') {
+      const value = args[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error('Option --name requires a configured verification command name.');
+      }
+      result.name = value;
+      index += 1;
     } else if (argument.startsWith('-')) {
       throw new Error(`Unknown option: ${argument}`);
     } else if (result.command === null) {
