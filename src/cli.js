@@ -27,6 +27,7 @@ Usage:
   noah decline [--cwd <path>]
   noah onboarding [--cwd <path>]
   noah permissions [--apply] [--cwd <path>]
+  noah verify [--name <command-name>] [--cwd <path>]
   noah link
   noah update-check [--cwd <path>] [--source <https-url|file>] [--force]
   noah language [<tag>|clear]
