@@ -339,17 +339,17 @@ async function installWorkflowAdapter(root, manifest) {
       if (await createFileIfMissing(targetPath, await readFile(sourcePath, 'utf8'))) installed.push(target);
     }
 
-    const settingsPath = path.join(root, '.claude', 'settings.json');
+    const settingsPath = path.join(root, '.claude', 'settings.local.json');
     let settings = {};
     try {
       const { lstat } = await import('node:fs/promises');
       const stats = await lstat(settingsPath);
       if (!stats.isFile() || stats.isSymbolicLink()) {
-        throw new Error('.claude/settings.json must be a regular file; workflow hook was not installed.');
+        throw new Error('.claude/settings.local.json must be a regular file; workflow hook was not installed.');
       }
       const parsed = JSON.parse(await readFile(settingsPath, 'utf8'));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('.claude/settings.json must contain a JSON object; workflow hook was not installed.');
+        throw new Error('.claude/settings.local.json must contain a JSON object; workflow hook was not installed.');
       }
       settings = parsed;
     } catch (error) {
@@ -357,11 +357,11 @@ async function installWorkflowAdapter(root, manifest) {
     }
 
     if (settings.hooks !== undefined && (!settings.hooks || typeof settings.hooks !== 'object' || Array.isArray(settings.hooks))) {
-      throw new Error('.claude/settings.json hooks must be an object; workflow hook was not installed.');
+      throw new Error('.claude/settings.local.json hooks must be an object; workflow hook was not installed.');
     }
     const stopGroups = settings.hooks?.Stop ?? [];
     if (!Array.isArray(stopGroups)) {
-      throw new Error('.claude/settings.json hooks.Stop must be an array; workflow hook was not installed.');
+      throw new Error('.claude/settings.local.json hooks.Stop must be an array; workflow hook was not installed.');
     }
     const alreadyRegistered = stopGroups.some((group) =>
       Array.isArray(group?.hooks) && group.hooks.some((hook) =>
@@ -392,7 +392,7 @@ async function installWorkflowAdapter(root, manifest) {
       } else {
         await createFileIfMissing(settingsPath, content);
       }
-      installed.push('.claude/settings.json (Stop hook)');
+      installed.push('.claude/settings.local.json (Stop hook)');
     }
   }
 
