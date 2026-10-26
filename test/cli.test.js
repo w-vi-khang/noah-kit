@@ -121,6 +121,8 @@ test('installs the Core into user-local storage without changing project files',
     assert.equal(marker.version, CORE_VERSION);
     assert.equal(state.installations[CORE_VERSION].path, installPath);
     assert.ok(await readFile(path.join(installPath, 'src', 'cli.js'), 'utf8'));
+    assert.ok(await readFile(path.join(installPath, 'skills', 'workflow-orchestration', 'SKILL.md'), 'utf8'));
+    assert.ok(await readFile(path.join(installPath, 'scripts', 'stop-gate.js'), 'utf8'));
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
@@ -662,6 +664,10 @@ function settingsPathOf(root) {
   return path.join(root, '.claude', 'settings.json');
 }
 
+function localSettingsPathOf(root) {
+  return path.join(root, '.claude', 'settings.local.json');
+}
+
 async function pathExists(target) {
   try {
     await lstat(target);
@@ -777,7 +783,7 @@ test('permissions preview after init prints WILL_CREATE, both rules and reasons,
     assert.ok(result.stdout.includes(`  - ${VISIBILITY_NOTE}\n`), 'preview says it cannot see user or managed settings');
     assert.ok(result.stdout.endsWith('Preview only. Nothing was written.\n'));
     assert.equal(await pathExists(settingsPathOf(root)), false);
-    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), false);
+    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), true);
     assert.deepEqual(await snapshotProtectedFiles(root), before);
     await assertNoNoahHome(root);
   });
@@ -815,7 +821,7 @@ test('permissions --apply creates exactly the approved settings and a repeat rep
     assert.equal(await readFile(settingsPathOf(root), 'utf8'), bytes);
 
     assert.deepEqual(await snapshotProtectedFiles(root), before);
-    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), false);
+    assert.equal(await pathExists(path.join(root, '.claude', 'settings.local.json')), true);
     await assertNoNoahHome(root);
   });
 });
@@ -1157,7 +1163,7 @@ test('permissions never parses or changes settings.local.json, the manifest, the
 
     assert.equal(await readFile(localSettingsPath, 'utf8'), localContent);
     assert.deepEqual(await snapshotProtectedFiles(root), before);
-    assert.deepEqual((await readdir(path.join(root, '.claude'))).sort(), ['rules', 'settings.json', 'settings.local.json']);
+    assert.deepEqual((await readdir(path.join(root, '.claude'))).sort(), ['rules', 'settings.local.json', 'settings.json', 'skills'].sort());
     await assertNoNoahHome(root);
   });
 });
@@ -1255,14 +1261,20 @@ test('permissions rejects --source, --force, and extra positional arguments with
   });
 });
 
-test('init prints the permissions pointer on a fresh and on a repeated run and never creates a settings file', async () => {
+test('init installs workflow skills and the Stop hook idempotently while printing the permissions pointer', async () => {
   await withTemporaryProject(async (root) => {
     const fresh = runCli(root, 'init');
 
     assert.equal(fresh.status, 0, fresh.stderr);
     assert.ok(fresh.stdout.includes(`${POINTER_LINE}\n`), fresh.stdout);
     assert.equal(fresh.stdout.split(POINTER_LINE).length - 1, 1);
-    assert.equal(await pathExists(settingsPathOf(root)), false);
+    const settingsAfterFirstRun = JSON.parse(await readFile(localSettingsPathOf(root), 'utf8'));
+    assert.equal(settingsAfterFirstRun.hooks.Stop.length, 1);
+    assert.match(settingsAfterFirstRun.hooks.Stop[0].hooks[0].command, /\.noah-kit\/runtime\/scripts\/stop-gate\.js/);
+    for (const skill of ['workflow-orchestration', 'failure-diagnosis', 'efficient-verification']) {
+      assert.ok(await pathExists(path.join(root, '.claude', 'skills', skill, 'SKILL.md')), skill);
+    }
+    assert.ok(await pathExists(path.join(root, '.noah-kit', 'runtime', 'scripts', 'verify-run.js')));
 
     const repeated = runCli(root, 'init');
 
@@ -1270,12 +1282,13 @@ test('init prints the permissions pointer on a fresh and on a repeated run and n
     assert.match(repeated.stdout, /No changes needed/);
     assert.ok(repeated.stdout.includes(`${POINTER_LINE}\n`), repeated.stdout);
     assert.equal(repeated.stdout.split(POINTER_LINE).length - 1, 1);
-    assert.equal(await pathExists(settingsPathOf(root)), false);
-    assert.deepEqual(await readdir(path.join(root, '.claude')), ['rules']);
+    const settingsAfterSecondRun = JSON.parse(await readFile(localSettingsPathOf(root), 'utf8'));
+    assert.equal(settingsAfterSecondRun.hooks.Stop.length, 1);
+    assert.deepEqual((await readdir(path.join(root, '.claude', 'skills'))).sort(), ['efficient-verification', 'failure-diagnosis', 'workflow-orchestration']);
   });
 });
 
-test('init does not modify or create settings when a settings file already exists', async () => {
+test('init preserves project settings and registers the Stop hook in local settings', async () => {
   await withTemporaryProject(async (root) => {
     await mkdir(path.dirname(settingsPathOf(root)), { recursive: true });
     await writeFile(settingsPathOf(root), SETTINGS_CONFLICT_RULES_MISSING);
@@ -1284,6 +1297,9 @@ test('init does not modify or create settings when a settings file already exist
 
     assert.equal(result.status, 0, result.stderr);
     assert.equal(await readFile(settingsPathOf(root), 'utf8'), SETTINGS_CONFLICT_RULES_MISSING);
+    const settings = JSON.parse(await readFile(localSettingsPathOf(root), 'utf8'));
+    assert.equal(settings.hooks.Stop.length, 1);
+    assert.match(settings.hooks.Stop[0].hooks[0].command, /stop-gate\.js/);
   });
 });
 

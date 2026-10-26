@@ -58,19 +58,19 @@ test('reports a compatible update without downloading or installing it', async (
     assert.equal(runCli(root, 'init').status, 0);
     const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
     const originalManifest = await readFile(manifestPath, 'utf8');
-    const indexPath = await writeIndex(root, [release('0.1.2'), release('0.2.0', { classification: 'breaking' })]);
+    const indexPath = await writeIndex(root, [release('0.1.3'), release('0.2.0', { classification: 'breaking' })]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^UPDATE_AVAILABLE: Core 0\.1\.2 \(patch/);
+    assert.match(result.stdout, /^UPDATE_AVAILABLE: Core 0\.1\.3 \(patch/);
     assert.match(result.stdout, /Nothing was downloaded or installed/);
     assert.equal(await readFile(manifestPath, 'utf8'), originalManifest);
-    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.2', 'core-manifest.json')), { code: 'ENOENT' });
+    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.3', 'core-manifest.json')), { code: 'ENOENT' });
 
     const record = (await readState(root)).update_checks.stable;
     assert.equal(record.last_result, 'UPDATE_AVAILABLE');
-    assert.equal(record.latest_known_version, '0.1.2');
+    assert.equal(record.latest_known_version, '0.1.3');
     assert.equal(record.last_success_at, record.last_attempt_at);
     assert.equal(record.source, indexPath);
     assert.match(result.stderr, /non-default release source/);
@@ -80,7 +80,7 @@ test('reports a compatible update without downloading or installing it', async (
 test('does not check again before the next scheduled slot', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
-    const indexPath = await writeIndex(root, [release('0.1.2')]);
+    const indexPath = await writeIndex(root, [release('0.1.3')]);
     assert.equal(runCli(root, 'update-check', '--source', indexPath).status, 0);
     const statePath = path.join(root, '.test-noah-home', 'state.json');
     const stateAfterFirstCheck = await readFile(statePath, 'utf8');
@@ -100,12 +100,12 @@ test('does not check again before the next scheduled slot', async () => {
 test('reports UP_TO_DATE when no newer compatible release exists', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
-    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1'), release('0.2.0'), release('0.1.5', { channel: 'beta' })]);
+    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1'), release('0.1.2'), release('0.2.0'), release('0.1.5', { channel: 'beta' })]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.1/);
+    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.2/);
     const record = (await readState(root)).update_checks.stable;
     assert.equal(record.last_result, 'UP_TO_DATE');
     assert.equal(record.latest_known_version, null);
@@ -159,7 +159,7 @@ test('rejects a non-https release source before writing local state', async () =
 test('preserves invalid local state instead of overwriting it', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
-    const indexPath = await writeIndex(root, [release('0.1.2')]);
+    const indexPath = await writeIndex(root, [release('0.1.3')]);
     const home = path.join(root, '.test-noah-home');
     await mkdir(home, { recursive: true });
     await writeFile(path.join(home, 'state.json'), '{invalid');
@@ -177,12 +177,12 @@ test('keeps existing installations and projects and compares against the install
     assert.equal(runCli(root, 'init').status, 0);
     assert.equal(runCli(root, 'install').status, 0);
     const before = await readState(root);
-    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1')]);
+    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1'), release('0.1.2')]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.1/);
+    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.2/);
     const after = await readState(root);
     assert.deepEqual(after.installations, before.installations);
     assert.deepEqual(after.projects, before.projects);
@@ -193,7 +193,7 @@ test('honors a disabled check policy unless the check is forced', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
     await updateManifest(root, (manifest) => { manifest.updates.check_on_startup = false; });
-    const indexPath = await writeIndex(root, [release('0.1.2')]);
+    const indexPath = await writeIndex(root, [release('0.1.3')]);
 
     const disabled = runCli(root, 'update-check', '--source', indexPath);
     assert.equal(disabled.status, 0, disabled.stderr);
@@ -210,13 +210,13 @@ test('mentions that auto_install is ignored when an update is available', async 
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
     await updateManifest(root, (manifest) => { manifest.updates.auto_install = true; });
-    const indexPath = await writeIndex(root, [release('0.1.2')]);
+    const indexPath = await writeIndex(root, [release('0.1.3')]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /updates\.auto_install is ignored/);
-    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.2', 'core-manifest.json')), { code: 'ENOENT' });
+    await assert.rejects(readFile(path.join(root, '.test-noah-home', 'versions', '0.1.3', 'core-manifest.json')), { code: 'ENOENT' });
   });
 });
 
@@ -224,7 +224,7 @@ test('fails closed on an unsupported schedule timezone', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
     await updateManifest(root, (manifest) => { manifest.updates.timezone = 'Asia/Ho_Chi_Minh'; });
-    const indexPath = await writeIndex(root, [release('0.1.2')]);
+    const indexPath = await writeIndex(root, [release('0.1.3')]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 
@@ -249,7 +249,7 @@ test('a check against one source does not suppress a check against another', asy
     const firstPath = await writeIndex(root, []);
     assert.equal(runCli(root, 'update-check', '--source', firstPath).status, 0);
     const secondPath = path.join(root, 'mirror.json');
-    await writeFile(secondPath, JSON.stringify({ schema_version: 1, kit_id: 'noah-kit', releases: [release('0.1.2')] }));
+    await writeFile(secondPath, JSON.stringify({ schema_version: 1, kit_id: 'noah-kit', releases: [release('0.1.3')] }));
 
     const result = runCli(root, 'update-check', '--source', secondPath);
 
@@ -277,7 +277,7 @@ test('fails closed on a null updates block', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
     await updateManifest(root, (manifest) => { manifest.updates = null; });
-    const indexPath = await writeIndex(root, [release('0.1.2')]);
+    const indexPath = await writeIndex(root, [release('0.1.3')]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 

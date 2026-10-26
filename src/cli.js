@@ -11,7 +11,7 @@ import { DEFAULT_RELEASE_SOURCE, describeReleaseSource, isValidChannel, loadRele
 import { FAILURE_RETRY_MINUTES, evaluateUpdateCheck, resolveUpdatePolicy } from './update-policy.js';
 import { compareVersions, isVersionCompatible } from './version.js';
 
-const CLI_VERSION = '0.1.1';
+const CLI_VERSION = '0.1.2';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
 const MANIFEST_DISPLAY_PATH = '.noah-kit/manifest.json';
 const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
@@ -204,7 +204,7 @@ function createManifest(projectName) {
     capabilities: {
       skills: true,
       subagents: true,
-      hooks: false,
+      hooks: true,
       migrations: false
     },
     verification: {
@@ -299,6 +299,106 @@ This check runs only during a session that follows this rule. MUST NOT state tha
 `;
 }
 
+const WORKFLOW_SKILL_NAMES = ['workflow-orchestration', 'failure-diagnosis', 'efficient-verification'];
+const WORKFLOW_RUNTIME_FILES = [
+  ['scripts/stop-gate.js', '.noah-kit/runtime/scripts/stop-gate.js'],
+  ['scripts/verify-run.js', '.noah-kit/runtime/scripts/verify-run.js'],
+  ['src/verification.js', '.noah-kit/runtime/src/verification.js']
+];
+const STOP_HOOK_COMMAND = 'node "${CLAUDE_PROJECT_DIR}/.noah-kit/runtime/scripts/stop-gate.js"';
+
+async function createFileIfMissing(targetPath, content) {
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  try {
+    await writeFile(targetPath, content, { flag: 'wx' });
+    return true;
+  } catch (error) {
+    if (error.code === 'EEXIST') return false;
+    throw error;
+  }
+}
+
+async function installWorkflowAdapter(root, manifest) {
+  const installed = [];
+  if (manifest.capabilities?.skills !== false) {
+    for (const name of WORKFLOW_SKILL_NAMES) {
+      const sourcePath = path.join(PACKAGE_ROOT, 'skills', name, 'SKILL.md');
+      const targetPath = path.join(root, '.claude', 'skills', name, 'SKILL.md');
+      if (!(await exists(sourcePath))) throw new Error(`Bundled skill is missing: skills/${name}/SKILL.md`);
+      if (await createFileIfMissing(targetPath, await readFile(sourcePath, 'utf8'))) {
+        installed.push(path.relative(root, targetPath));
+      }
+    }
+  }
+
+  if (manifest.capabilities?.hooks !== false) {
+    for (const [source, target] of WORKFLOW_RUNTIME_FILES) {
+      const sourcePath = path.join(PACKAGE_ROOT, source);
+      const targetPath = path.join(root, target);
+      if (!(await exists(sourcePath))) throw new Error(`Bundled workflow runtime file is missing: ${source}`);
+      if (await createFileIfMissing(targetPath, await readFile(sourcePath, 'utf8'))) installed.push(target);
+    }
+
+    const settingsPath = path.join(root, '.claude', 'settings.local.json');
+    let settings = {};
+    try {
+      const { lstat } = await import('node:fs/promises');
+      const stats = await lstat(settingsPath);
+      if (!stats.isFile() || stats.isSymbolicLink()) {
+        throw new Error('.claude/settings.local.json must be a regular file; workflow hook was not installed.');
+      }
+      const parsed = JSON.parse(await readFile(settingsPath, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('.claude/settings.local.json must contain a JSON object; workflow hook was not installed.');
+      }
+      settings = parsed;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+
+    if (settings.hooks !== undefined && (!settings.hooks || typeof settings.hooks !== 'object' || Array.isArray(settings.hooks))) {
+      throw new Error('.claude/settings.local.json hooks must be an object; workflow hook was not installed.');
+    }
+    const stopGroups = settings.hooks?.Stop ?? [];
+    if (!Array.isArray(stopGroups)) {
+      throw new Error('.claude/settings.local.json hooks.Stop must be an array; workflow hook was not installed.');
+    }
+    const alreadyRegistered = stopGroups.some((group) =>
+      Array.isArray(group?.hooks) && group.hooks.some((hook) =>
+        hook?.type === 'command' && hook.command === STOP_HOOK_COMMAND
+      )
+    );
+    if (!alreadyRegistered) {
+      const nextSettings = {
+        ...settings,
+        hooks: {
+          ...(settings.hooks ?? {}),
+          Stop: [...stopGroups, {
+            matcher: '',
+            hooks: [{ type: 'command', command: STOP_HOOK_COMMAND, timeout: 5 }]
+          }]
+        }
+      };
+      const content = `${JSON.stringify(nextSettings, null, 2)}\n`;
+      if (await exists(settingsPath)) {
+        const tempPath = `${settingsPath}.noah-${randomUUID()}.tmp`;
+        await writeFile(tempPath, content, { flag: 'wx' });
+        try {
+          await rename(tempPath, settingsPath);
+        } catch (error) {
+          await rm(tempPath, { force: true });
+          throw error;
+        }
+      } else {
+        await createFileIfMissing(settingsPath, content);
+      }
+      installed.push('.claude/settings.local.json (Stop hook)');
+    }
+  }
+
+  return installed;
+}
+
 async function initializeProject(root) {
   const manifestAbsolutePath = path.join(root, MANIFEST_PATH);
   const claudeRuleAbsolutePath = path.join(root, CLAUDE_RULE_PATH);
@@ -324,7 +424,8 @@ async function initializeProject(root) {
   if (!ruleExists) plannedChanges.push(CLAUDE_RULE_PATH);
 
   if (plannedChanges.length === 0) {
-    process.stdout.write(`No changes needed. Existing Noah Kit files were preserved.\nProject: ${manifest.project.name} (${manifest.project.id})\n${PERMISSIONS_POINTER}`);
+    const workflowChanges = await installWorkflowAdapter(root, manifest);
+    process.stdout.write(`No changes needed for the manifest or rule. Existing Noah Kit files were preserved.\n${workflowChanges.length ? `Installed workflow adapter files:\n${workflowChanges.map((item) => `  - ${item}`).join('\n')}\n` : 'Workflow adapter is already installed or disabled by manifest capabilities.\n'}Project: ${manifest.project.name} (${manifest.project.id})\n${PERMISSIONS_POINTER}`);
     return;
   }
 
@@ -341,7 +442,9 @@ async function initializeProject(root) {
     throw new Error(`Initialization could not finish while creating ${error.path ?? 'a project file'}. Review the working tree before retrying. Original error: ${error.message}`);
   }
 
-  process.stdout.write(`Initialized Noah Kit project files:\n${plannedChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n${PERMISSIONS_POINTER}`);
+  const workflowChanges = await installWorkflowAdapter(root, manifest);
+  const allChanges = [...plannedChanges, ...workflowChanges];
+  process.stdout.write(`Initialized Noah Kit project files:\n${allChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n${PERMISSIONS_POINTER}`);
 }
 
 async function manageClaudePermissions(root, { apply }) {
@@ -406,6 +509,12 @@ async function installCore(root) {
       const docsPath = path.join(PACKAGE_ROOT, 'docs');
       if (await exists(docsPath)) {
         await cp(docsPath, path.join(stagingDirectory, 'docs'), { recursive: true, errorOnExist: true, force: false });
+      }
+      for (const assetDirectory of ['skills', 'scripts']) {
+        const assetPath = path.join(PACKAGE_ROOT, assetDirectory);
+        if (await exists(assetPath)) {
+          await cp(assetPath, path.join(stagingDirectory, assetDirectory), { recursive: true, errorOnExist: true, force: false });
+        }
       }
       await writeFile(path.join(stagingDirectory, 'core-manifest.json'), `${JSON.stringify({
         schema_version: 1,
