@@ -324,7 +324,8 @@ async function initializeProject(root) {
   if (!ruleExists) plannedChanges.push(CLAUDE_RULE_PATH);
 
   if (plannedChanges.length === 0) {
-    process.stdout.write(`No changes needed. Existing Noah Kit files were preserved.\nProject: ${manifest.project.name} (${manifest.project.id})\n${PERMISSIONS_POINTER}`);
+    const workflowChanges = await installWorkflowAdapter(root, manifest);
+    process.stdout.write(`No changes needed for the manifest or rule. Existing Noah Kit files were preserved.\\n${workflowChanges.length ? `Installed workflow adapter files:\\n${workflowChanges.map((item) => `  - ${item}`).join('\\n')}\\n` : 'Workflow adapter is already installed or disabled by manifest capabilities.\\n'}Project: ${manifest.project.name} (${manifest.project.id})\\n${PERMISSIONS_POINTER}`);
     return;
   }
 
@@ -341,7 +342,9 @@ async function initializeProject(root) {
     throw new Error(`Initialization could not finish while creating ${error.path ?? 'a project file'}. Review the working tree before retrying. Original error: ${error.message}`);
   }
 
-  process.stdout.write(`Initialized Noah Kit project files:\n${plannedChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n${PERMISSIONS_POINTER}`);
+  const workflowChanges = await installWorkflowAdapter(root, manifest);
+  const allChanges = [...plannedChanges, ...workflowChanges];
+  process.stdout.write(`Initialized Noah Kit project files:\\n${allChanges.map((item) => `  - ${item}`).join('\\n')}\\nProject: ${manifest.project.name} (${manifest.project.id})\\nReview and commit these files. User-local state is not created in the project.\\n${PERMISSIONS_POINTER}`);
 }
 
 async function manageClaudePermissions(root, { apply }) {
