@@ -220,6 +220,10 @@ function enoent(file) {
 }
 
 function symlinkOrSkip(t, target, linkPath) {
+  if (process.platform === 'win32') {
+    t.skip('Self-referential symbolic-link loop behavior is not portable on Windows.');
+    return false;
+  }
   try {
     symlinkSync(target, linkPath);
     return true;
