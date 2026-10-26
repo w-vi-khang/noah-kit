@@ -52,7 +52,7 @@ if (!changed && !hasVerificationRecord) process.exit(0);
 process.stdout.write(JSON.stringify({
   decision: 'block',
   reason: [
-    'Noah Kit: inspect the diff and report evidence before finishing.',
+    'Noah Kit: inspect the diff and report verification evidence before finishing.',
     'Run the narrowest configured verification command with: node <noah-kit-plugin-path>/scripts/verify-run.js --cwd <project> [--name <command>].',
     'Do not rerun an unchanged failure without a diagnostic reason.',
     'If verification cannot be completed, explicitly report UNVERIFIED or PENDING and why.',
