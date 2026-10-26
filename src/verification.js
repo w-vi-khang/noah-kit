@@ -113,6 +113,7 @@ export async function runVerification(root, name) {
   const logName = `${stamp}-${safeName}.log`;
   await writeFile(path.join(directory, logName), output, { flag: 'wx' });
   record.log = path.join(VERIFY_DIR, logName).split(path.sep).join('/');
+  record.log_sha256 = createHash('sha256').update(output).digest('hex');
   await writeFile(path.join(directory, 'latest.json'), `${JSON.stringify(record, null, 2)}\n`, 'utf8');
 
   process.stdout.write(`Verification: ${status}\nCommand: ${command.join(' ')}\nExit code: ${exitCode}\nDuration: ${record.duration_ms} ms\nLog: ${record.log}\nFingerprint: ${record.fingerprint}\n`);
@@ -144,7 +145,11 @@ export async function getCurrentVerificationStatus(root) {
     if (!logPath.startsWith(path.resolve(root, VERIFY_DIR) + path.sep)) {
       return { current: false, reason: 'The verification log path is outside the verification directory.' };
     }
-    await readFile(logPath);
+    const logContent = await readFile(logPath);
+    const logHash = createHash('sha256').update(logContent).digest('hex');
+    if (record.log_sha256 !== logHash) {
+      return { current: false, reason: 'The verification log changed after the recorded run.' };
+    }
     if (record.status !== 'PASSED' || record.exit_code !== 0) {
       return { current: false, reason: `The last verification status is ${record.status}.` };
     }
