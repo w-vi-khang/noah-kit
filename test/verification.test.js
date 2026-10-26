@@ -22,7 +22,7 @@ async function fixture(callback) {
       schema_version: 1,
       kit: { id: 'noah-kit', core_version_range: '>=0.1.0 <0.2.0' },
       project: { id: 'test-project', name: 'Verification test', type: 'application' },
-      verification: { commands: { check: [process.execPath, '-e', 'process.stdout.write("check passed")'] } }
+      verification: { commands: { check: [process.execPath, path.join(root, 'check.js')] } }
     };
     await writeFile(path.join(root, '.noah-kit', 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     git(root, 'init');
