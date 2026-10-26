@@ -53,6 +53,25 @@ The rule sets the requirements. The design choices behind them:
 - **No nested delegation** comes from leaving the `Agent` tool out of every subagent. Claude Code withholds subagent spawning from an agent whose tool list lacks `Agent` (source: https://code.claude.com/docs/en/sub-agents).
 - **Bounded retries** and a **single writer of history** keep a failing loop from running unattended.
 
+## Evidence-based verification
+
+Projects may define named verification commands in `.noah-kit/manifest.json`. Each command is an argument array, not an implicit shell snippet. Example:
+
+```json
+{
+  "verification": {
+    "commands": {
+      "unit": ["npm", "test"],
+      "check": ["npm", "run", "check"]
+    }
+  }
+}
+```
+
+Run one explicitly configured check with `node scripts/verify-run.js --cwd <project-path> --name unit`; omit `--name` to run the first configured command. This wrapper is shipped in the Noah Kit repository/plugin, so projects using the plugin should invoke it from the plugin checkout/cache path or configure an equivalent local script. It writes full output under `.noah-kit/verification/` and records the command, timestamps, duration, exit code, Git revision, changed-path hashes, and result status. The Stop hook compares the latest passing record with the current revision and changed-file contents. A changed source fingerprint, changed command configuration, or missing log invalidates the result.
+
+The runner never picks a command automatically from `package.json`; the project maintainer must explicitly configure the command. The command is executed when the user or agent explicitly runs the wrapper, so review the configured command before enabling it. A check that modifies tracked or untracked project files during execution is marked `INVALIDATED_DURING_RUN`. Logs and evidence are local project artifacts and should generally be ignored by version control if they are not intended for commits.
+
 ## Limitations
 
 These are instructions to the model, not enforced controls:
