@@ -16,7 +16,7 @@ async function fixture(callback) {
   try {
     await mkdir(path.join(root, '.noah-kit'), { recursive: true });
     await writeFile(path.join(root, 'sample.txt'), 'baseline\n');
-    await writeFile(path.join(root, 'check.js'), 'process.stdout.write("check passed");\\n');
+    await writeFile(path.join(root, 'check.js'), 'console.log("check passed");');
     await writeFile(path.join(root, 'fail.js'), 'process.stderr.write("expected failure"); process.exitCode = 7;\\n');
     const manifest = {
       schema_version: 1,
