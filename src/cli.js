@@ -64,7 +64,7 @@ Options:
 }
 
 function parseArguments(args) {
-  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false, apply: false };
+  const result = { command: null, arguments: [], cwd: process.cwd(), help: false, version: false, source: undefined, force: false, apply: false, name: undefined };
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
