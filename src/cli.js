@@ -10,6 +10,7 @@ import { describeLanguage, normalizeLanguageTag } from './preferences.js';
 import { DEFAULT_RELEASE_SOURCE, describeReleaseSource, isValidChannel, loadReleaseIndex, selectUpdateCandidate } from './release-index.js';
 import { FAILURE_RETRY_MINUTES, evaluateUpdateCheck, resolveUpdatePolicy } from './update-policy.js';
 import { compareVersions, isVersionCompatible } from './version.js';
+import { runVerification } from './verification.js';
 
 const CLI_VERSION = '0.1.1';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
