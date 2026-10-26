@@ -8,7 +8,7 @@ Noah Kit provides reusable workflow behavior for Claude Code while allowing each
 
 ### 1. Core
 
-Core is installed outside the target project and contains reusable runtime code, versioned templates, built-in rules, skills, update logic, and migration tooling. Core installation and update operations must be explicit and must validate source metadata before activation. The initial installer copies only the package manifest, Core source directory, and optional documentation into a versioned local directory; it validates the project's declared Core version range using a deliberately limited syntax of exact versions and space-separated comparison operators, and it does not run package lifecycle scripts or project migrations. Artifact signatures and remote release integrity checks remain future work.
+Core is installed outside the target project and contains reusable runtime code, versioned templates, built-in rules, skills, update logic, and migration tooling. Core installation and update operations must be explicit and must validate source metadata before activation. The installer copies the package manifest, Core source directory, workflow skills, hook/verification scripts, and optional documentation into a versioned local directory; it validates the project's declared Core version range using a deliberately limited syntax of exact versions and space-separated comparison operators, and it does not run package lifecycle scripts or project migrations. Artifact signatures and remote release integrity checks remain future work.
 
 ### 2. Project configuration
 
@@ -33,19 +33,19 @@ Project permission rules are written only by the explicit command `noah permissi
 - When `settings.json` is missing, `--apply` creates `.claude` if needed, then creates the file with an exclusive create, which fails instead of replacing a `settings.json` that appears after the inspection. `.claude` is not re-checked after the inspection.
 - If the write fails after the exclusive create, the command removes the file only while the path still names the file it created, and its error says whether the file was removed.
 
-Proposed direction (prototype; sources and limits in `docs/agent-workflow.md`): reusable Claude Code components (subagents, later skills, and the `noah` executable) ship in the Core plugin; the adapter keeps what a plugin cannot provide according to the Claude Code documentation, namely always-loaded rules and default Claude Code settings. Whether hooks live in the plugin or in the adapter is undecided.
+Current direction: reusable plugin components (subagents and the `noah` executable) remain available through the plugin. `noah init` also installs workflow skills and a project-local copy of the Stop-hook runtime into the adapter, so those workflows can work without requiring the plugin to be enabled. The hook registration is kept in `.claude/settings.local.json` to avoid modifying shared project settings.
 
 ## Workflow skills and lifecycle hooks
 
-The Claude Code plugin registers the reusable skills under `skills/` and lifecycle hooks through `hooks/hooks.json`. Skills provide task-specific guidance for orchestration, failure diagnosis, and efficient verification.
+The Claude Code plugin registers reusable skills under `skills/` and lifecycle hooks through `hooks/hooks.json`. `noah init` copies the three workflow skills to `.claude/skills/` and the runtime files to `.noah-kit/runtime/` when their corresponding manifest capabilities are enabled.
 
 The Stop hook runs `scripts/stop-gate.js`. If Git reports a dirty working tree, it asks the main agent to inspect the diff and report verification evidence. It does not run project commands, infer the correct test command, or prove correctness. It fails open if hook input is malformed, Git is unavailable, or the hook has already blocked one stop attempt. These limits are deliberate to avoid trapping the user in a hook loop. The hook is a reminder; tests, review, and observed command output remain the source of verification evidence. The plugin also includes `scripts/verify-run.js`, which executes only a named command explicitly configured as an argument array in `.noah-kit/manifest.json`, stores full output and a verification record under `.noah-kit/verification/`, and fingerprints the Git revision plus changed-file contents. The Stop hook accepts a passing record only while its fingerprint, command configuration, and log remain current. The runner does not infer commands from package scripts; review configured commands before running them. Verification output is local and may need to be ignored by project version control.
 
-Hooks and skills are shipped by the plugin. The current user-local Core installer copies only `src/`, `package.json`, and `docs/`; it does not install plugin components. Projects need the Noah Kit plugin enabled to receive these skills and hooks.
+The user-local Core installer includes the skill and runtime assets so `noah init` can generate a self-contained project adapter. The adapter stores hook registration in `.claude/settings.local.json`; it preserves existing settings and existing skill/runtime files, and it never runs project verification commands automatically.
 
 ## Initialization and onboarding
 
-- `noah init` initializes a project and creates the committed project manifest and minimal Claude Code adapter files.
+- `noah init` initializes a project, creates the committed project manifest and rule, installs workflow skills/runtime files, and registers the Stop hook in local Claude settings.
 - The first initializer reviews the generated files and commits them to version control.
 - On a later clone, the adapter identifies a project that declares Noah Kit but has no local installation.
 - The user is offered installation. Declining is recorded only in local state and must not modify the shared project configuration.
