@@ -204,7 +204,7 @@ function createManifest(projectName) {
     capabilities: {
       skills: true,
       subagents: true,
-      hooks: false,
+      hooks: true,
       migrations: false
     },
     verification: {
@@ -297,6 +297,106 @@ If the user declines, offer to record the choice with \`npx --yes github:w-vi-kh
 
 This check runs only during a session that follows this rule. MUST NOT state that reminders or scheduled checks run while Claude Code is closed.
 `;
+}
+
+const WORKFLOW_SKILL_NAMES = ['workflow-orchestration', 'failure-diagnosis', 'efficient-verification'];
+const WORKFLOW_RUNTIME_FILES = [
+  ['scripts/stop-gate.js', '.noah-kit/runtime/scripts/stop-gate.js'],
+  ['scripts/verify-run.js', '.noah-kit/runtime/scripts/verify-run.js'],
+  ['src/verification.js', '.noah-kit/runtime/src/verification.js']
+];
+const STOP_HOOK_COMMAND = 'node "${CLAUDE_PROJECT_DIR}/.noah-kit/runtime/scripts/stop-gate.js"';
+
+async function createFileIfMissing(targetPath, content) {
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  try {
+    await writeFile(targetPath, content, { flag: 'wx' });
+    return true;
+  } catch (error) {
+    if (error.code === 'EEXIST') return false;
+    throw error;
+  }
+}
+
+async function installWorkflowAdapter(root, manifest) {
+  const installed = [];
+  if (manifest.capabilities?.skills !== false) {
+    for (const name of WORKFLOW_SKILL_NAMES) {
+      const sourcePath = path.join(PACKAGE_ROOT, 'skills', name, 'SKILL.md');
+      const targetPath = path.join(root, '.claude', 'skills', name, 'SKILL.md');
+      if (!(await exists(sourcePath))) throw new Error(`Bundled skill is missing: skills/${name}/SKILL.md`);
+      if (await createFileIfMissing(targetPath, await readFile(sourcePath, 'utf8'))) {
+        installed.push(path.relative(root, targetPath));
+      }
+    }
+  }
+
+  if (manifest.capabilities?.hooks !== false) {
+    for (const [source, target] of WORKFLOW_RUNTIME_FILES) {
+      const sourcePath = path.join(PACKAGE_ROOT, source);
+      const targetPath = path.join(root, target);
+      if (!(await exists(sourcePath))) throw new Error(`Bundled workflow runtime file is missing: ${source}`);
+      if (await createFileIfMissing(targetPath, await readFile(sourcePath, 'utf8'))) installed.push(target);
+    }
+
+    const settingsPath = path.join(root, '.claude', 'settings.json');
+    let settings = {};
+    try {
+      const { lstat } = await import('node:fs/promises');
+      const stats = await lstat(settingsPath);
+      if (!stats.isFile() || stats.isSymbolicLink()) {
+        throw new Error('.claude/settings.json must be a regular file; workflow hook was not installed.');
+      }
+      const parsed = JSON.parse(await readFile(settingsPath, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('.claude/settings.json must contain a JSON object; workflow hook was not installed.');
+      }
+      settings = parsed;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+
+    if (settings.hooks !== undefined && (!settings.hooks || typeof settings.hooks !== 'object' || Array.isArray(settings.hooks))) {
+      throw new Error('.claude/settings.json hooks must be an object; workflow hook was not installed.');
+    }
+    const stopGroups = settings.hooks?.Stop ?? [];
+    if (!Array.isArray(stopGroups)) {
+      throw new Error('.claude/settings.json hooks.Stop must be an array; workflow hook was not installed.');
+    }
+    const alreadyRegistered = stopGroups.some((group) =>
+      Array.isArray(group?.hooks) && group.hooks.some((hook) =>
+        hook?.type === 'command' && hook.command === STOP_HOOK_COMMAND
+      )
+    );
+    if (!alreadyRegistered) {
+      const nextSettings = {
+        ...settings,
+        hooks: {
+          ...(settings.hooks ?? {}),
+          Stop: [...stopGroups, {
+            matcher: '',
+            hooks: [{ type: 'command', command: STOP_HOOK_COMMAND, timeout: 5 }]
+          }]
+        }
+      };
+      const content = `${JSON.stringify(nextSettings, null, 2)}\\n`;
+      if (await exists(settingsPath)) {
+        const tempPath = `${settingsPath}.noah-${randomUUID()}.tmp`;
+        await writeFile(tempPath, content, { flag: 'wx' });
+        try {
+          await rename(tempPath, settingsPath);
+        } catch (error) {
+          await rm(tempPath, { force: true });
+          throw error;
+        }
+      } else {
+        await createFileIfMissing(settingsPath, content);
+      }
+      installed.push('.claude/settings.json (Stop hook)');
+    }
+  }
+
+  return installed;
 }
 
 async function initializeProject(root) {
