@@ -100,7 +100,7 @@ test('does not check again before the next scheduled slot', async () => {
 test('reports UP_TO_DATE when no newer compatible release exists', async () => {
   await withTemporaryProject(async (root) => {
     assert.equal(runCli(root, 'init').status, 0);
-    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1'), release('0.1.2'), release('0.1.2'), release('0.2.0'), release('0.1.5', { channel: 'beta' })]);
+    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1'), release('0.1.2'), release('0.2.0'), release('0.1.5', { channel: 'beta' })]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 
@@ -177,7 +177,7 @@ test('keeps existing installations and projects and compares against the install
     assert.equal(runCli(root, 'init').status, 0);
     assert.equal(runCli(root, 'install').status, 0);
     const before = await readState(root);
-    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1')]);
+    const indexPath = await writeIndex(root, [release('0.1.0'), release('0.1.1'), release('0.1.2')]);
 
     const result = runCli(root, 'update-check', '--source', indexPath);
 
