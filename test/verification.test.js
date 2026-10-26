@@ -69,7 +69,7 @@ test('verification runner records failing checks without calling them passed', a
   await fixture(async (root) => {
     const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-    manifest.verification.commands.check = [process.execPath, '-e', 'process.stderr.write("expected failure"); process.exitCode = 7'];
+    manifest.verification.commands.check = [process.execPath, path.join(root, 'fail.js')];
     await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
     git(root, 'add', '.noah-kit/manifest.json');
     git(root, 'commit', '-m', 'Configure failing verification command');
