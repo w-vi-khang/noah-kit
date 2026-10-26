@@ -44,7 +44,7 @@ Commands:
              Preview the Claude Code permission rules Noah Kit proposes for
              this project. With --apply, create .claude/settings.json only
              when no settings file exists; an existing file is never changed.
-  link       Create user-local launcher files without changing PATH
+  verify     Run an explicitly configured check and save its log and source fingerprint\n  link       Create user-local launcher files without changing PATH
   update-check
              Check the release index for a newer compatible Core when the
              project's check schedule is due. Reports only; never installs.
