@@ -379,7 +379,7 @@ async function installWorkflowAdapter(root, manifest) {
           }]
         }
       };
-      const content = `${JSON.stringify(nextSettings, null, 2)}\\n`;
+      const content = `${JSON.stringify(nextSettings, null, 2)}\n`;
       if (await exists(settingsPath)) {
         const tempPath = `${settingsPath}.noah-${randomUUID()}.tmp`;
         await writeFile(tempPath, content, { flag: 'wx' });
@@ -425,7 +425,7 @@ async function initializeProject(root) {
 
   if (plannedChanges.length === 0) {
     const workflowChanges = await installWorkflowAdapter(root, manifest);
-    process.stdout.write(`No changes needed for the manifest or rule. Existing Noah Kit files were preserved.\\n${workflowChanges.length ? `Installed workflow adapter files:\\n${workflowChanges.map((item) => `  - ${item}`).join('\\n')}\\n` : 'Workflow adapter is already installed or disabled by manifest capabilities.\\n'}Project: ${manifest.project.name} (${manifest.project.id})\\n${PERMISSIONS_POINTER}`);
+    process.stdout.write(`No changes needed for the manifest or rule. Existing Noah Kit files were preserved.\n${workflowChanges.length ? `Installed workflow adapter files:\n${workflowChanges.map((item) => `  - ${item}`).join('\n')}\n` : 'Workflow adapter is already installed or disabled by manifest capabilities.\n'}Project: ${manifest.project.name} (${manifest.project.id})\n${PERMISSIONS_POINTER}`);
     return;
   }
 
@@ -444,7 +444,7 @@ async function initializeProject(root) {
 
   const workflowChanges = await installWorkflowAdapter(root, manifest);
   const allChanges = [...plannedChanges, ...workflowChanges];
-  process.stdout.write(`Initialized Noah Kit project files:\\n${allChanges.map((item) => `  - ${item}`).join('\\n')}\\nProject: ${manifest.project.name} (${manifest.project.id})\\nReview and commit these files. User-local state is not created in the project.\\n${PERMISSIONS_POINTER}`);
+  process.stdout.write(`Initialized Noah Kit project files:\n${allChanges.map((item) => `  - ${item}`).join('\n')}\nProject: ${manifest.project.name} (${manifest.project.id})\nReview and commit these files. User-local state is not created in the project.\n${PERMISSIONS_POINTER}`);
 }
 
 async function manageClaudePermissions(root, { apply }) {
