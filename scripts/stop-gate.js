@@ -53,7 +53,7 @@ process.stdout.write(JSON.stringify({
   decision: 'block',
   reason: [
     'Noah Kit: inspect the diff and report evidence before finishing.',
-    'Run the narrowest configured verification command with: node scripts/verify-run.js --cwd <project> [--name <command>].',
+    'Run the narrowest configured verification command with: node <noah-kit-plugin-path>/scripts/verify-run.js --cwd <project> [--name <command>].',
     'Do not rerun an unchanged failure without a diagnostic reason.',
     'If verification cannot be completed, explicitly report UNVERIFIED or PENDING and why.',
     hasVerificationRecord ? `Recorded verification is not current: ${verification.reason}` : 'No verification run has been recorded for the current changes.',
