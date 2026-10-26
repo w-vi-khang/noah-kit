@@ -121,6 +121,8 @@ test('installs the Core into user-local storage without changing project files',
     assert.equal(marker.version, CORE_VERSION);
     assert.equal(state.installations[CORE_VERSION].path, installPath);
     assert.ok(await readFile(path.join(installPath, 'src', 'cli.js'), 'utf8'));
+    assert.ok(await readFile(path.join(installPath, 'skills', 'workflow-orchestration', 'SKILL.md'), 'utf8'));
+    assert.ok(await readFile(path.join(installPath, 'scripts', 'stop-gate.js'), 'utf8'));
     await assert.rejects(readFile(path.join(root, '.noah-kit', 'manifest.json'), 'utf8'), { code: 'ENOENT' });
   });
 });
