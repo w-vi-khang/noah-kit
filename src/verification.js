@@ -33,8 +33,10 @@ async function getFingerprint(root) {
   });
   if (status.status !== 0) throw new Error('Could not inspect Git working tree before or after verification.');
 
+  const verificationDirPosix = VERIFY_DIR.split(path.sep).join('/');
   const paths = status.stdout.split('\n').filter(Boolean).map((line) => line.slice(3))
-    .filter((file) => file !== VERIFY_DIR && !file.startsWith(VERIFY_DIR + path.sep))
+    .map((file) => file.replace(/\\\\/g, '/'))
+    .filter((file) => file !== verificationDirPosix && !file.startsWith(verificationDirPosix + '/'))
     .map((file) => file.includes(' -> ') ? file.split(' -> ').at(-1) : file);
   const entries = [];
   for (const file of [...new Set(paths)].sort()) {
