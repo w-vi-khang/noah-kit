@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
+import { access, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { getCurrentVerificationStatus } from '../src/verification.js';
 
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
@@ -26,18 +29,34 @@ const result = spawnSync('git', ['status', '--short'], {
 if (result.error || result.status !== 0) process.exit(0);
 
 const changed = result.stdout.trim();
-if (!changed) process.exit(0);
+const latestPath = path.join(cwd, '.noah-kit', 'verification', 'latest.json');
+let hasVerificationRecord = false;
+try {
+  await access(latestPath);
+  hasVerificationRecord = true;
+} catch {
+  // No prior run is normal on a new project.
+}
 
-// This is a single reminder, not proof of verification. On the next stop event,
-// stop_hook_active prevents repeated blocking if the working tree is still dirty.
+let verification = { current: false, reason: 'No recorded verification result.' };
+try {
+  verification = await getCurrentVerificationStatus(cwd);
+} catch {
+  // The hook must fail open on unexpected inspection errors.
+}
+
+if (verification.current) process.exit(0);
+if (!changed && !hasVerificationRecord) process.exit(0);
+
+// This hook blocks once per stop cycle. It never runs a project command itself.
 process.stdout.write(JSON.stringify({
   decision: 'block',
   reason: [
-    'Noah Kit: before finishing, inspect the current diff and report verification evidence.',
-    'Run the narrowest relevant project check if one is documented and safe.',
+    'Noah Kit: inspect the diff and report evidence before finishing.',
+    'Run the narrowest configured verification command with: node scripts/verify-run.js --cwd <project> [--name <command>].',
     'Do not rerun an unchanged failure without a diagnostic reason.',
     'If verification cannot be completed, explicitly report UNVERIFIED or PENDING and why.',
-    'Changed working-tree paths were detected; this hook does not infer whether they are correct.',
-    changed
+    hasVerificationRecord ? `Recorded verification is not current: ${verification.reason}` : 'No verification run has been recorded for the current changes.',
+    changed || 'The working tree is clean, but a previous verification record is stale.'
   ].join('\n')
 }));
