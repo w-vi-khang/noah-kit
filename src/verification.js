@@ -83,7 +83,7 @@ export async function runVerification(root, name) {
     timeout: 10 * 60 * 1000,
     maxBuffer: 20 * 1024 * 1024,
     windowsHide: true,
-    shell: process.platform === 'win32'
+    shell: process.platform === 'win32' && !/\\.(exe|com)$/i.test(command[0])
   });
   const output = [result.stdout ?? '', result.stderr ?? '', result.error ? `Runner error: ${result.error.message}\n` : ''].join('');
   const after = await getFingerprint(root);
