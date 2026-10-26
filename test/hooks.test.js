@@ -34,7 +34,7 @@ test('plugin registers its skills and Stop hook using component paths', () => {
 
   for (const name of skillNames) {
     const skillPath = path.join(root, 'skills', name, 'SKILL.md');
-    const skill = readFileSync(skillPath, 'utf8').replace(/\\r\\n/g, '\\n');
+    const skill = readFileSync(skillPath, 'utf8').replace(/\r\n/g, '\n');
     assert.match(skill, new RegExp('^---\\nname: ' + name + '\\n'));
     assert.ok(skill.length > 200, name + ' must contain actionable guidance');
   }
