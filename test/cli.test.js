@@ -1255,14 +1255,20 @@ test('permissions rejects --source, --force, and extra positional arguments with
   });
 });
 
-test('init prints the permissions pointer on a fresh and on a repeated run and never creates a settings file', async () => {
+test('init installs workflow skills and the Stop hook idempotently while printing the permissions pointer', async () => {
   await withTemporaryProject(async (root) => {
     const fresh = runCli(root, 'init');
 
     assert.equal(fresh.status, 0, fresh.stderr);
     assert.ok(fresh.stdout.includes(`${POINTER_LINE}\n`), fresh.stdout);
     assert.equal(fresh.stdout.split(POINTER_LINE).length - 1, 1);
-    assert.equal(await pathExists(settingsPathOf(root)), false);
+    const settingsAfterFirstRun = JSON.parse(await readFile(settingsPathOf(root), 'utf8'));
+    assert.equal(settingsAfterFirstRun.hooks.Stop.length, 1);
+    assert.match(settingsAfterFirstRun.hooks.Stop[0].hooks[0].command, /\.noah-kit\/runtime\/scripts\/stop-gate\.js/);
+    for (const skill of ['workflow-orchestration', 'failure-diagnosis', 'efficient-verification']) {
+      assert.ok(await pathExists(path.join(root, '.claude', 'skills', skill, 'SKILL.md')), skill);
+    }
+    assert.ok(await pathExists(path.join(root, '.noah-kit', 'runtime', 'scripts', 'verify-run.js')));
 
     const repeated = runCli(root, 'init');
 
@@ -1270,12 +1276,13 @@ test('init prints the permissions pointer on a fresh and on a repeated run and n
     assert.match(repeated.stdout, /No changes needed/);
     assert.ok(repeated.stdout.includes(`${POINTER_LINE}\n`), repeated.stdout);
     assert.equal(repeated.stdout.split(POINTER_LINE).length - 1, 1);
-    assert.equal(await pathExists(settingsPathOf(root)), false);
-    assert.deepEqual(await readdir(path.join(root, '.claude')), ['rules']);
+    const settingsAfterSecondRun = JSON.parse(await readFile(settingsPathOf(root), 'utf8'));
+    assert.equal(settingsAfterSecondRun.hooks.Stop.length, 1);
+    assert.deepEqual((await readdir(path.join(root, '.claude', 'skills'))).sort(), ['efficient-verification', 'failure-diagnosis', 'workflow-orchestration']);
   });
 });
 
-test('init does not modify or create settings when a settings file already exists', async () => {
+test('init preserves existing settings while merging the Noah Kit Stop hook', async () => {
   await withTemporaryProject(async (root) => {
     await mkdir(path.dirname(settingsPathOf(root)), { recursive: true });
     await writeFile(settingsPathOf(root), SETTINGS_CONFLICT_RULES_MISSING);
@@ -1283,7 +1290,11 @@ test('init does not modify or create settings when a settings file already exist
     const result = runCli(root, 'init');
 
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(await readFile(settingsPathOf(root), 'utf8'), SETTINGS_CONFLICT_RULES_MISSING);
+    const settings = JSON.parse(await readFile(settingsPathOf(root), 'utf8'));
+    assert.equal(settings.model, 'sonnet');
+    assert.deepEqual(settings.permissions, { allow: ['Bash(ls)'] });
+    assert.equal(settings.hooks.Stop.length, 1);
+    assert.match(settings.hooks.Stop[0].hooks[0].command, /stop-gate\.js/);
   });
 });
 
