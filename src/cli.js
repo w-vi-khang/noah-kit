@@ -13,6 +13,7 @@ import { compareVersions, isVersionCompatible } from './version.js';
 
 const CLI_VERSION = '0.1.1';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
+const MANIFEST_DISPLAY_PATH = '.noah-kit/manifest.json';
 const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -151,10 +152,10 @@ async function readProjectManifest(root) {
     return validateManifest(JSON.parse(await readFile(manifestPath, 'utf8')));
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error(`${MANIFEST_PATH} is not valid JSON.`);
+      throw new Error(`${MANIFEST_DISPLAY_PATH} is not valid JSON.`);
     }
     if (error.message.includes(MANIFEST_PATH)) throw error;
-    throw new Error(`${MANIFEST_PATH}: ${error.message}`);
+    throw new Error(`${MANIFEST_DISPLAY_PATH}: ${error.message}`);
   }
 }
 
