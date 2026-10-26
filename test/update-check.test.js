@@ -105,7 +105,7 @@ test('reports UP_TO_DATE when no newer compatible release exists', async () => {
     const result = runCli(root, 'update-check', '--source', indexPath);
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.1/);
+    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.2/);
     const record = (await readState(root)).update_checks.stable;
     assert.equal(record.last_result, 'UP_TO_DATE');
     assert.equal(record.latest_known_version, null);
@@ -182,7 +182,7 @@ test('keeps existing installations and projects and compares against the install
     const result = runCli(root, 'update-check', '--source', indexPath);
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.1/);
+    assert.match(result.stdout, /^UP_TO_DATE: no stable release newer than 0\.1\.2/);
     const after = await readState(root);
     assert.deepEqual(after.installations, before.installations);
     assert.deepEqual(after.projects, before.projects);
