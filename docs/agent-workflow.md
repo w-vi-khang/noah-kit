@@ -68,7 +68,7 @@ Projects may define named verification commands in `.noah-kit/manifest.json`. Ea
 }
 ```
 
-Run one explicitly configured check with `node scripts/verify-run.js --cwd <project-path> --name unit`; omit `--name` to run the first configured command. This wrapper is shipped in the Noah Kit repository/plugin, so projects using the plugin should invoke it from the plugin checkout/cache path or configure an equivalent local script. It writes full output under `.noah-kit/verification/` and records the command, timestamps, duration, exit code, Git revision, changed-path hashes, and result status. The Stop hook compares the latest passing record with the current revision and changed-file contents. A changed source fingerprint, changed command configuration, or missing log invalidates the result.
+Run one explicitly configured check with `node .noah-kit/runtime/scripts/verify-run.js --cwd . --name unit`; omit `--name` to run the first configured command. `noah init` installs this wrapper and its verification module into the project adapter. It writes full output under `.noah-kit/verification/` and records the command, timestamps, duration, exit code, Git revision, changed-path hashes, and result status. The Stop hook compares the latest passing record with the current revision and changed-file contents. A changed source fingerprint, changed command configuration, or missing log invalidates the result.
 
 The runner never picks a command automatically from `package.json`; the project maintainer must explicitly configure the command. The command is executed when the user or agent explicitly runs the wrapper, so review the configured command before enabling it. A check that modifies tracked or untracked project files during execution is marked `INVALIDATED_DURING_RUN`. Logs and evidence are local project artifacts and should generally be ignored by version control if they are not intended for commits.
 
@@ -78,8 +78,8 @@ These are instructions to the model, not enforced controls:
 
 - Tier choice, stage selection, and briefs depend on the MA following `.claude/rules/main-agent.md`. Nothing blocks a skipped stage.
 - Read-only agents have Bash, so they could still modify files. Their instructions forbid it, but nothing enforces it.
-- The plugin now registers a Stop hook that reminds the main agent to inspect a dirty working tree and report verification evidence. It is a reminder, not a test runner or correctness guarantee; it fails open on malformed input, Git errors, or repeated stop events. Subagent commit prevention is still instruction-based.
-- Three plugin skills now cover workflow orchestration, failure diagnosis, and efficient verification. Their activation remains model-driven; structural tests verify that the files are registered, not that a model follows them.
+- The plugin registers a Stop hook, and `noah init` installs a project-local equivalent in `.claude/settings.local.json`, that reminds the main agent to inspect a dirty working tree and report verification evidence. It is a reminder, not a test runner or correctness guarantee; it fails open on malformed input, Git errors, or repeated stop events. Subagent commit prevention is still instruction-based.
+- Three skills now cover workflow orchestration, failure diagnosis, and efficient verification. `noah init` copies them into `.claude/skills/`; their activation remains model-driven. Structural tests verify installation and hook registration, not that a model follows the instructions.
 - The structural test (`test/agents.test.js`) checks agent fields, that no agent fixes a model or effort, tool boundaries, and that the rule names every agent. It does not test how the model behaves in a real session.
 
 ## Distribution to other projects
@@ -100,7 +100,7 @@ This repository is also a plugin marketplace:
 - `bin/noah` runs the command-line entry point `src/main.js`, which imports `run()` from `src/cli.js`. `src/cli.js` has no side effects on import, so the CLI does not depend on how its path was reached (symlinks, npm bin links, or the plugin cache). See `CONTRIBUTING.md` for running a checkout. Claude Code puts a plugin's `bin/` on the Bash tool's `PATH` after the user's own entries, so a `noah` already on the user's `PATH` (such as the launcher from `noah link`, if the user added it to `PATH`) takes precedence and may run a different Core version. `noah --version` shows which version runs. `bin/noah` is a POSIX shell script; there is no Windows `.cmd` equivalent, so Claude's PowerShell tool cannot run it.
 - The plugin root contains `package.json` without a lockfile, so Claude Code installs no dependencies when it caches the plugin. Adding a lockfile would make Claude Code run a dependency install at cache time.
 
-The shipped agents are written for this repository: their descriptions refer to the T0-T3 tiers in `.claude/rules/main-agent.md`, and `reviewer` checks Noah Kit's own safety rules. The plugin does not ship that rule, so in another project the agents lack that context. Generating it with `init` as part of the Claude Code adapter is proposed, not implemented.
+The shipped agents are written for this repository: their descriptions refer to the T0-T3 tiers in `.claude/rules/main-agent.md`, and `reviewer` checks Noah Kit's own safety rules. The plugin does not ship that rule, so in another project the agents lack that context. Generating that repository-specific main-agent rule in other projects with `init` remains unimplemented.
 
 `claude plugin validate .` passes with one warning: `CLAUDE.md` at the plugin root is not loaded as plugin context. That file is this repository's own development instructions, so the warning is expected, and `--strict` fails because of it.
 
