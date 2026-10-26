@@ -11,7 +11,7 @@ import { DEFAULT_RELEASE_SOURCE, describeReleaseSource, isValidChannel, loadRele
 import { FAILURE_RETRY_MINUTES, evaluateUpdateCheck, resolveUpdatePolicy } from './update-policy.js';
 import { compareVersions, isVersionCompatible } from './version.js';
 
-const CLI_VERSION = '0.1.1';
+const CLI_VERSION = '0.1.2';
 const MANIFEST_PATH = path.join('.noah-kit', 'manifest.json');
 const MANIFEST_DISPLAY_PATH = '.noah-kit/manifest.json';
 const CLAUDE_RULE_PATH = path.join('.claude', 'rules', 'noah-kit.md');
@@ -509,6 +509,12 @@ async function installCore(root) {
       const docsPath = path.join(PACKAGE_ROOT, 'docs');
       if (await exists(docsPath)) {
         await cp(docsPath, path.join(stagingDirectory, 'docs'), { recursive: true, errorOnExist: true, force: false });
+      }
+      for (const assetDirectory of ['skills', 'scripts']) {
+        const assetPath = path.join(PACKAGE_ROOT, assetDirectory);
+        if (await exists(assetPath)) {
+          await cp(assetPath, path.join(stagingDirectory, assetDirectory), { recursive: true, errorOnExist: true, force: false });
+        }
       }
       await writeFile(path.join(stagingDirectory, 'core-manifest.json'), `${JSON.stringify({
         schema_version: 1,
