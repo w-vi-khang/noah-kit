@@ -35,7 +35,7 @@ async function getFingerprint(root) {
 
   const verificationDirPosix = VERIFY_DIR.split(path.sep).join('/');
   const paths = status.stdout.split('\n').filter(Boolean).map((line) => line.slice(3))
-    .map((file) => file.replace(/\\\\/g, '/'))
+    .map((file) => file.replace(/\\/g, '/'))
     .filter((file) => file !== verificationDirPosix && !file.startsWith(verificationDirPosix + '/'))
     .map((file) => file.includes(' -> ') ? file.split(' -> ').at(-1) : file);
   const entries = [];
