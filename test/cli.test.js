@@ -508,9 +508,10 @@ test('the generated rule requires root cause, a search for and fix of every inst
   assert.match(section, /MUST NOT keep a prevention measure only in the agent's local memory/);
 });
 
-test('the generated rule forbids adding a Claude Code hook or Git hook and requires proposing it instead', async () => {
+test('the generated rule requires approval and a safety contract for reusable hooks', async () => {
   const section = await generatedSection('## Correcting mistakes');
-  assert.match(section, /MUST NOT add a Claude Code hook or a Git hook as a prevention measure\. If only a hook can prevent the mistake, MUST propose the hook to the user instead\./);
+  assert.match(section, /MUST NOT add an ad hoc Claude Code hook or Git hook as a prevention measure without explicit user approval and a tested failure\/loop contract\./);
+  assert.match(section, /Reusable Noah Kit plugin hooks are governed by the approved Core change and hook-specific tests\./);
 });
 
 test('the generated rule requires finishing the correction before reporting the task and honors change-process limits', async () => {
@@ -1100,8 +1101,8 @@ test('permissions with an invalid manifest exits 1 for preview and --apply with 
     await mkdir(path.dirname(manifestPath), { recursive: true });
     const cases = [
       ['{ invalid json', '.noah-kit/manifest.json is not valid JSON.'],
-      ['[]', 'The Noah Kit manifest must contain a JSON object.'],
-      [JSON.stringify({ schema_version: 1 }), 'The manifest kit.id must be "noah-kit".']
+      ['[]', '.noah-kit/manifest.json: The Noah Kit manifest must contain a JSON object.'],
+      [JSON.stringify({ schema_version: 1 }), '.noah-kit/manifest.json: The manifest kit.id must be "noah-kit".']
     ];
     for (const [content, validationError] of cases) {
       await writeFile(manifestPath, content);
