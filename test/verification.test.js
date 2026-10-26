@@ -17,7 +17,7 @@ async function fixture(callback) {
     await mkdir(path.join(root, '.noah-kit'), { recursive: true });
     await writeFile(path.join(root, 'sample.txt'), 'baseline\n');
     await writeFile(path.join(root, 'check.js'), 'console.log("check passed");');
-    await writeFile(path.join(root, 'fail.js'), 'process.stderr.write("expected failure"); process.exitCode = 7;\\n');
+    await writeFile(path.join(root, 'fail.js'), 'throw new Error("expected failure");');
     const manifest = {
       schema_version: 1,
       kit: { id: 'noah-kit', core_version_range: '>=0.1.0 <0.2.0' },
@@ -77,7 +77,7 @@ test('verification runner records failing checks without calling them passed', a
     assert.equal(exitCode, 1);
     const record = JSON.parse(await readFile(path.join(root, '.noah-kit', 'verification', 'latest.json'), 'utf8'));
     assert.equal(record.status, 'FAILED');
-    assert.equal(record.exit_code, 7);
+    assert.equal(record.exit_code, 1);
     assert.equal((await getCurrentVerificationStatus(root)).current, false);
   });
 });
