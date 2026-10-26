@@ -90,6 +90,8 @@ npx --yes github:w-vi-khang/noah-kit permissions --apply
 
 The Claude Code plugin also provides workflow-orchestration, failure-diagnosis, and efficient-verification skills, plus a Stop hook that prompts for diff inspection and evidence-based reporting when the working tree is dirty. The hook is a reminder only; it does not run tests or prove correctness. These components are available when the plugin is enabled, not through the user-local Core installer.
 
+For projects that configure checks in `.noah-kit/manifest.json`, the plugin includes a verification runner at `scripts/verify-run.js`. Configure explicit argument arrays under `verification.commands`, then run `node <noah-kit-plugin-path>/scripts/verify-run.js --cwd <project-path> --name <command-name>`. It stores full logs and source fingerprints in `.noah-kit/verification/`; the Stop hook treats missing or stale evidence as unverified. The runner never guesses which project command to execute.
+
 Try Core as a Claude Code plugin (see `docs/agent-workflow.md`). For one session:
 
 ```sh
