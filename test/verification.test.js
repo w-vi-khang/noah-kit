@@ -52,6 +52,17 @@ test('verification runner saves output and detects source changes after the run'
   });
 });
 
+test('verification status rejects a modified saved log', async () => {
+  await fixture(async (root) => {
+    assert.equal(await runVerification(root, 'check'), 0);
+    const record = JSON.parse(await readFile(path.join(root, '.noah-kit', 'verification', 'latest.json'), 'utf8'));
+    await writeFile(path.join(root, record.log), 'edited log content');
+    const status = await getCurrentVerificationStatus(root);
+    assert.equal(status.current, false);
+    assert.match(status.reason, /log changed/);
+  });
+});
+
 test('verification runner records failing checks without calling them passed', async () => {
   await fixture(async (root) => {
     const manifestPath = path.join(root, '.noah-kit', 'manifest.json');
